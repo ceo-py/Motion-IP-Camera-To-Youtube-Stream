@@ -1,4 +1,3 @@
-```markdown
 # Motion Detection System with Discord Notifications and YouTube Streaming
 
 This project allows you to set up a **motion detection system** on Unix/Linux servers using [Motion](https://motion-project.github.io/) with **IP cameras**. When motion is detected:
@@ -36,14 +35,12 @@ sudo apt install motion ffmpeg curl -y
 
 ### 2. Configure Motion
 
-1. Copy the main configuration to `/etc/motion/motion.conf`.
+1. Copy the main configuration to [/etc/motion/motion.conf](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/motion.conf).
 2. Set daemon mode, disable local storage, and enable emulated motion:
 
 ### 3. Camera-Specific Configs
 
-#### Kitchen Camera (`/etc/motion/ipcamera-kitchen.conf`)
-
-#### Stairs Camera (`/etc/motion/ipcamera-stairs.conf`)
+#### Kitchen Camera [/etc/motion/ipcamera-kitchen.conf](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/ipcamera-kitchen.conf)
 
 ---
 
@@ -55,11 +52,11 @@ All scripts should be **executable**:
 chmod +x PATH TO SCRIPTS/*.sh
 ```
 
-### 1. Discord Webhook Script
+### 1. Discord Webhook [Script](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/webhook-ipcamera-kitchen.sh)
 
-### 2. Start YouTube Stream
+### 2. Start YouTube Stream [Script](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/start-ip-camera-kitchen.sh)
 
-### 3. Stop YouTube Stream
+### 3. Stop YouTube Stream [Script](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/stop-ip-camera-kitchen.sh)
 
 ---
 
@@ -90,4 +87,5 @@ sudo tail -f /var/log/motion/motion.log
 * Adjust `threshold` and `minimum_motion_frames` per camera for sensitivity.
 * Motion handles multiple cameras; each camera has its own `.conf` and scripts.
 * Scripts prevent multiple instances of FFmpeg from running simultaneously.
+* Use emulate_motion on for testing automation and to verify triggers without physical motion.
 
