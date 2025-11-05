@@ -82,10 +82,12 @@ sudo tail -f /var/log/motion/motion.log
 
 ## Notes
 
-* Make sure RTSP URLs and YouTube stream keys are correct.
-* Logs are stored in `PATH YOU GIVE INSIDE THE STAR CAMERA SCRIPT`.
-* Adjust `threshold` and `minimum_motion_frames` per camera for sensitivity.
-* Motion handles multiple cameras; each camera has its own `.conf` and scripts.
+* In **every script**, you must update:
+  * The **full path to the script** on your system.
+  * Your **Discord webhook URL** in the webhook scripts.
+  * Your **RTSP camera URL** in the start streaming scripts.
+  * Your **YouTube Stream Key** in the start streaming scripts.
+* Make sure the **log directories** exist and are writable.
+* Adjust `threshold` and `minimum_motion_frames` per camera for correct motion sensitivity.
 * Scripts prevent multiple instances of FFmpeg from running simultaneously.
-* Use emulate_motion on for testing automation and to verify triggers without physical motion.
-
+* Use `emulate_motion on` for testing automation and verifying that triggers are firing without physical motion.
