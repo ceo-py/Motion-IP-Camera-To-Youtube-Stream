@@ -1,0 +1,79 @@
+import urllib.request
+import urllib.error
+import datetime
+import json
+import sys
+
+# --- Import Configuration ---
+try:
+    from config import CAMERA_CONFIG
+except ImportError:
+    print("Error: Could not find 'config.py'. Ensure it's in the same directory.")
+    sys.exit(1)
+
+def send_webhook(CAMERA_NAME: str) -> None:
+    if CAMERA_NAME not in CAMERA_CONFIG:
+        print(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
+        sys.exit(1)
+
+    if "WEBHOOK_URL" not in CAMERA_CONFIG[CAMERA_NAME] or not CAMERA_CONFIG[CAMERA_NAME]["WEBHOOK_URL"]:
+        print(f"Error: Camera '{CAMERA_CONFIG[CAMERA_NAME]}' WEBHOOK_URL not defined in config.py.")
+        sys.exit(1)
+
+    if "MESSAGE" not in CAMERA_CONFIG[CAMERA_NAME] or not CAMERA_CONFIG[CAMERA_NAME]["MESSAGE"]:
+        print(f"Error: Camera '{CAMERA_CONFIG[CAMERA_NAME]}' MESSAGE not defined in config.py.")
+        sys.exit(1)
+
+    # Construct the final message content
+    CURRENT_TIME = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    FINAL_MESSAGE = f'{CAMERA_CONFIG[CAMERA_NAME]["MESSAGE"]} {CURRENT_TIME}'
+    DISCORD_WEBHOOK_URL = CAMERA_CONFIG[CAMERA_NAME]["WEBHOOK_URL"]
+
+    payload = {
+        "content": FINAL_MESSAGE
+    }
+
+    try:
+        print(f"Sending Discord alert for {CAMERA_NAME}: '{FINAL_MESSAGE}'")
+
+        # Assign the webhook URL to a local variable for clarity
+        webhook_url = DISCORD_WEBHOOK_URL
+
+        # 1. Encode the payload to bytes
+        data = json.dumps(payload).encode('utf-8')
+
+        # 2. Define headers, including Content-Type and User-Agent
+        headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0' # Added User-Agent as per suggestion
+        }
+
+        # 3. Create the request object
+        req = urllib.request.Request(
+            webhook_url,
+            data=data,
+            headers=headers,
+            method='POST'
+        )
+
+        # 4. Send the request (with a timeout)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            # Discord returns 204 No Content on successful message post
+            if response.getcode() == 204:
+                print(f"SUCCESS: Discord message sent.")
+                sys.exit(0)
+            else:
+                # Handle unexpected success codes
+                print(f"INFO: Message sent, but unexpected status code: {response.getcode()}")
+                sys.exit(0)
+
+    except urllib.error.HTTPError as e:
+        # Handles 4xx or 5xx errors from the server
+        print(f"ERROR: Failed to send Discord message. Status Code: {e.code}")
+        # print(f"Response Text: {e.read().decode('utf-8')}") # Uncomment for debugging
+        sys.exit(1)
+
+    except urllib.error.URLError as e:
+        # Handles network issues (e.g., connection refused, DNS errors, timeout)
+        print(f"ERROR: Network or connection error while sending Discord message: {e.reason}")
+        sys.exit(1)

@@ -1,93 +1,166 @@
+
 # Motion Detection System with Discord Notifications and YouTube Streaming
 
-This project allows you to set up a **motion detection system** on Unix/Linux servers using [Motion](https://motion-project.github.io/) with **IP cameras**. When motion is detected:
+This project provides two distinct methods for setting up a real-time motion detection system using the [Motion](https://motion-project.github.io/) daemon and IP cameras. When motion is detected, the system automatically sends a notification and starts a YouTube live stream, which stops when the motion event concludes.
 
-1. A **Discord webhook** notification is sent.
-2. A **YouTube live stream** of the camera feed starts.
-3. The stream stops automatically when the motion event ends.
-
-No videos or snapshots are saved on the server; all motion detection happens in real-time.
+No videos or snapshots are saved on the server; all processing occurs in real-time.
 
 ---
 
-## Features
+## 🚀 Features
 
-- Real-time motion detection from multiple IP cameras.
-- Discord notifications for each motion event.
-- Automatic YouTube live streaming while motion is detected.
-- Automatic stopping of streams when motion ends.
-- Minimal server storage usage, since no files are stored locally.
-- Configurable for any number of cameras.
-
----
-
+* **Real-time** motion detection from multiple IP cameras.
+* **Discord notifications** for each motion event.
+* **Automatic YouTube live streaming** while motion is detected.
+* Automatic stopping of streams when motion ends.
+* Minimal server storage usage.
+* Highly configurable for any number of cameras.
 
 ---
 
-## Installation Guide
+# Method 1: Python System (Recommended for Scalability) 🐍
 
-### 1. Install Dependencies
+This method uses centralized configuration (`config.py`) and modular Python scripts (`start_stream.py`, `send_webhook.py`) for easier maintenance and management of multiple cameras.
+
+## 1. Installation Guide (Python)
+
+### Dependencies
+
+You only need `motion` and `ffmpeg`. The Python scripts use **built-in Python libraries** (`subprocess`, `urllib`, `json`).
+
+```bash
+sudo apt update
+sudo apt install motion ffmpeg python3 -y
+````
+
+### Project File Structure
+
+Place the following Python scripts and configuration file in a dedicated directory (e.g., `/home/ceo/scripts`):
+
+1.  `config.py` (Central source of truth for all URLs, keys, and webhook addresses)
+2.  `start_stream.py` (Starts FFmpeg process, saves PID, and sends a "Stream Live" webhook)
+3.  `stop_stream.py` (Reads PID, sends kill signal, and removes PID file)
+4.  `send_webhook.py` (Reusable function to send motion-triggered alerts)
+
+### Permissions (MANDATORY)
+
+Since your Motion service is running as the **root** user via `systemd`, you must ensure the following are configured correctly:
+
+| **Target** | **Requirement** | **Command**                                 |
+| :--- | :--- |:--------------------------------------------|
+| **Scripts** (`*.py`) | **Execute** permission & Shebang line | `chmod +x *.py`                             |
+| **Log Directory** | Directory must exist | `sudo mkdir -p /PATH/TO/YOUR/SCRIPTS/logs` |
+
+You must add **`#!/usr/bin/env python3`** as the **very first line** of `start_stream.py`, `stop_stream.py`, and `send_webhook.py`.
+
+## 2\. Configuration (`config.py`)
+
+This file contains all camera-specific settings. The Python scripts dynamically load settings based on the camera name passed by Motion.
+
+```python
+# config.py (snippet)
+
+LOG_DIR = "/PATH/TO/YOUR/SCRIPTS/logs"
+FFMPEG_BIN = "/usr/bin/ffmpeg"
+
+CAMERA_CONFIG = {
+    "Kitchen": {
+        "STREAM_URL": "rtsp://...",
+        "YOUTUBE_KEY": "1234-1234-1234-1234-1234",
+        "CHAT_INFO": "Kitchen Live Stream",
+        "WEBHOOK_URL": "[https://discord.com/api/webhooks/xxxx",
+        "MESSAGE": "🚨 Motion Alert: Kitchen Camera at"
+    },
+    # Add other cameras here...
+}
+```
+
+## 3\. Motion Configuration Integration (Python)
+
+In your camera-specific configuration file (e.g., `/etc/motion/ipcamera-kitchen.conf`).
+```conf
+############################################################
+# Event Handling - Python Scripts
+############################################################
+
+# Start the stream when motion starts (calls start_stream.py and sends "LIVE" webhook)
+on_event_start /usr/bin/python3 /path/to/your/scripts/start_stream.py Kitchen
+
+# Stop the stream when motion ends
+on_event_end /usr/bin/python3 /path/to/your/scripts/stop_stream.py Kitchen
+```
+
+-----
+
+# Method 2: Legacy Bash System (Individual Scripts) 🐚
+
+This method uses simple, self-contained Bash scripts for each camera. This is less scalable as configuration must be duplicated across multiple files.
+
+## 1\. Installation Guide (Bash)
+
+### Dependencies
+
+This method requires `curl` for webhooks, plus `motion` and `ffmpeg`.
 
 ```bash
 sudo apt update
 sudo apt install motion ffmpeg curl -y
-````
+```
 
-### 2. Configure Motion
+### Project File Structure
 
-1. Copy the main configuration to [/etc/motion/motion.conf](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/motion.conf).
-2. Set daemon mode, disable local storage, and enable emulated motion:
+Place your individual shell scripts (e.g., `webhook-kitchen.sh`, `start-kitchen.sh`, `stop-kitchen.sh`) in your preferred scripts directory.
 
-### 3. Camera-Specific Configs
-
-#### Kitchen Camera [/etc/motion/ipcamera-kitchen.conf](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/ipcamera-kitchen.conf)
-
----
-
-## Bash Scripts
+### Bash Scripts
 
 All scripts should be **executable**:
 
 ```bash
-chmod +x PATH TO SCRIPTS/*.sh
+chmod +x /path/to/your/scripts/*.sh
 ```
 
-### 1. Discord Webhook [Script](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/webhook-ipcamera-kitchen.sh)
+**CRITICAL:** You must manually update the **Discord Webhook URL**, **RTSP camera URL**, and **YouTube Stream Key** inside **every** individual Bash script file.
 
-### 2. Start YouTube Stream [Script](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/start-ip-camera-kitchen.sh)
+## 2\. Motion Configuration Integration (Bash)
 
-### 3. Stop YouTube Stream [Script](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/blob/main/stop-ip-camera-kitchen.sh)
+In your camera-specific configuration file (e.g., `/etc/motion/ipcamera-kitchen.conf`), use the full path to your Bash scripts.
 
----
+```conf
+############################################################
+# Event Handling - Bash Scripts
+############################################################
 
-## Running the System
+# Start the stream and send a notification
+on_event_start /path/to/your/scripts/start-ip-camera-kitchen.sh
 
-1. Start Motion as a service:
-
-```bash
-sudo systemctl enable motion
-sudo systemctl start motion
-sudo systemctl status motion
+# Stop the stream
+on_event_end /path/to/your/scripts/stop-ip-camera-kitchen.sh
 ```
 
-2. Verify cameras and logs:
+-----
 
-```bash
-sudo tail -f /var/log/motion/motion.log
-```
+## ⚙️ Running the System (Both Methods)
 
-* Motion will trigger the Discord webhook and start/stop YouTube streams automatically.
+1.  **Start or restart Motion** to load the new configuration:
 
----
+    ```bash
+    sudo systemctl enable motion
+    sudo systemctl restart motion
+    sudo systemctl status motion
+    ```
 
-## Notes
+2.  **Verify camera logs** for execution success:
 
-* In **every script**, you must update:
-  * The **full path to the script** on your system.
-  * Your **Discord webhook URL** in the webhook scripts.
-  * Your **RTSP camera URL** in the start streaming scripts.
-  * Your **YouTube Stream Key** in the start streaming scripts.
-* Make sure the **log directories** exist and are writable.
-* Adjust `threshold` and `minimum_motion_frames` per camera for correct motion sensitivity.
-* Scripts prevent multiple instances of FFmpeg from running simultaneously.
-* Use `emulate_motion on` for testing automation and verifying that triggers are firing without physical motion.
+    ```bash
+    sudo tail -f /var/log/motion/motion.log
+    # Check the Python logs for PID files and timestamps (Python Method Only):
+    sudo tail -f /home/ceo/production/logs/ffmpeg-Kitchen.log 
+    ```
+
+## 📝 Notes
+
+  * **Tuning:** Adjust `threshold` and `minimum_motion_frames` per camera in your Motion config files for correct motion sensitivity.
+  * **Testing:** Use `emulate_motion on` in your camera config for testing automation and verifying that triggers are firing without physical motion.
+
+
+
