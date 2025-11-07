@@ -35,7 +35,7 @@ sudo apt install motion ffmpeg python3 -y
 
 ### Project File Structure
 
-Place the following Python scripts and configuration file in a dedicated directory (e.g., `/home/ceo/scripts`):
+Place the following Python scripts and configuration file in a dedicated directory (e.g., `/PATH/TO/YOUR/SCRIPTS`):
 
 1.  `config.py` (Central source of truth for all URLs, keys, and webhook addresses)
 2.  `start_stream.py` (Starts FFmpeg process, saves PID, and sends a "Stream Live" webhook)
@@ -154,7 +154,7 @@ on_event_end /path/to/your/scripts/stop-ip-camera-kitchen.sh
     ```bash
     sudo tail -f /var/log/motion/motion.log
     # Check the Python logs for PID files and timestamps (Python Method Only):
-    sudo tail -f /home/ceo/production/logs/ffmpeg-Kitchen.log 
+    sudo tail -f /PATH/TO/YOUR/SCRIPTS/logs/ffmpeg-Kitchen.log 
     ```
 
 ## 📝 Notes
