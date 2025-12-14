@@ -162,5 +162,40 @@ on_event_end /path/to/your/scripts/stop-ip-camera-kitchen.sh
   * **Tuning:** Adjust `threshold` and `minimum_motion_frames` per camera in your Motion config files for correct motion sensitivity.
   * **Testing:** Use `emulate_motion on` in your camera config for testing automation and verifying that triggers are firing without physical motion.
 
+---
 
+## 🔑 Google API Authentication (`token.json`)
+
+To interact with YouTube's API for live streaming, you'll need to authenticate with Google and generate the **`token.json`** file, which stores your credentials. Follow these steps to generate it:
+
+1. **Create a Google API project** and **enable the YouTube Data API**:
+
+   * Go to the [Google Cloud Console](https://console.cloud.google.com/).
+   * Create a new project or select an existing one.
+   * Enable the **YouTube Data API v3**.
+
+2. **Download OAuth 2.0 credentials**:
+
+   * In the **Google Cloud Console**, go to **APIs & Services > Credentials**.
+   * Under **OAuth 2.0 Client IDs**, create a new OAuth 2.0 client ID (Desktop app).
+   * Download the credentials as a `client_secret.json` file.
+
+3. **Generate `token.json`**:
+
+   * Place the `client_secret.json` in your project directory.
+   * Run the following script to authenticate and generate the `token.json` file:
+
+   ```bash
+   python3 generate_token.py
+   ```
+
+   * This will open a browser window for authentication. After you authenticate, the script will generate the **`token.json`** file and save it in your project directory. This file will be used to authenticate future interactions with the YouTube API.
+
+4. **Use `token.json` for Authentication**:
+
+   * The generated `token.json` file is now used in the Python scripts (`start_stream.py`, `stop_stream.py`) to authenticate and interact with YouTube’s API for live streaming.
+
+**Note**: This process only needs to be done once unless the token expires, in which case you’ll need to regenerate it.
+
+---
 
