@@ -1,7 +1,7 @@
 from generate_token import get_authenticated_service
 import datetime
 
-PLAYLIST_ID = "PLV0e0d_ZUComWaSZdRi2wLH9MSYujkZvz"
+PLAYLIST_ID = "SOMEPLAYLISTID"
 
 
 def get_playlist_id(youtube_service, playlist_name):
@@ -192,7 +192,8 @@ if __name__ == '__main__':
 
     # Define stream details
     camera = "Yard Camera"
-    title, description = gen_stream_name_desc(camera, gen_start_time())
+    start_time = gen_start_time()
+    title, description = gen_stream_name_desc(camera, start_time)
 
     # Schedule the start time (for example, 1 hour from now)
 
