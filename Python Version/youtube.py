@@ -1,10 +1,11 @@
 from generate_token import get_authenticated_service
+from googleapiclient.discovery import build
 import datetime
 
 PLAYLIST_ID = ""
 
 
-def get_playlist_id(youtube_service, playlist_name):
+def get_playlist_id(youtube_service: build, playlist_name: str) -> str | None:
     """
     Get the playlist ID for a given playlist name.
     """
@@ -21,7 +22,7 @@ def get_playlist_id(youtube_service, playlist_name):
     return None
 
 
-def update_video_name(youtube_service, video_id, new_title):
+def update_video_name(youtube_service: build, video_id: str, new_title: str) -> None:
     request = youtube_service.videos().update(
         part='snippet',
         body={
@@ -34,7 +35,7 @@ def update_video_name(youtube_service, video_id, new_title):
     request.execute()
 
 
-def check_video_in_playlist(youtube_service, video_id, playlist_id):
+def check_video_in_playlist(youtube_service: build, video_id: str, playlist_id: str) -> bool:
     """
     Check if a video is already in the given playlist.
     """
@@ -51,7 +52,7 @@ def check_video_in_playlist(youtube_service, video_id, playlist_id):
     return False
 
 
-def add_video_to_playlist(youtube_service, video_id, playlist_id):
+def add_video_to_playlist(youtube_service: build, video_id: str, playlist_id: str) -> None:
     """
     Add a video to the specified playlist.
     """
@@ -72,7 +73,7 @@ def add_video_to_playlist(youtube_service, video_id, playlist_id):
     print(f"Added video {video_id} to the playlist.")
 
 
-def list_unlisted_live_videos(youtube_service):
+def list_unlisted_live_videos(youtube_service: build) -> None:
     # Call the YouTube API to list live broadcasts from the authenticated user's channel
     request = youtube_service.liveBroadcasts().list(
         part='snippet, status',
@@ -99,7 +100,7 @@ def list_unlisted_live_videos(youtube_service):
         add_video_to_playlist(youtube_service, video_id, PLAYLIST_ID)
 
 
-def get_existing_stream_id(youtube, stream_name):
+def get_existing_stream_id(youtube: build, stream_name: str) -> str | None:
     """Retrieve the stream ID based on the stream key."""
     request = youtube.liveStreams().list(
         part="snippet",
@@ -121,7 +122,7 @@ def get_existing_stream_id(youtube, stream_name):
     return None  # If the stream is not found
 
 
-def create_scheduled_broadcast(youtube, title, description, start_time):
+def create_scheduled_broadcast(youtube: build, title: str, description: str, start_time: datetime) -> build:
     """Create a scheduled YouTube live broadcast."""
     request = youtube.liveBroadcasts().insert(
         part="snippet,contentDetails,status",
@@ -145,7 +146,7 @@ def create_scheduled_broadcast(youtube, title, description, start_time):
     return response
 
 
-def bind_stream_to_broadcast(youtube, broadcast_id, stream_id):
+def bind_stream_to_broadcast(youtube: build, broadcast_id: str, stream_id: str) -> build:
     """Bind the existing stream to the broadcast."""
     request = youtube.liveBroadcasts().bind(
         part="id,contentDetails",
@@ -156,7 +157,7 @@ def bind_stream_to_broadcast(youtube, broadcast_id, stream_id):
     return response
 
 
-def go_live(youtube, broadcast_id):
+def go_live(youtube: build, broadcast_id: str) -> None:
     """Transition a scheduled broadcast to live."""
     youtube.liveBroadcasts().transition(
         part="status",
@@ -166,7 +167,7 @@ def go_live(youtube, broadcast_id):
     add_video_to_playlist(youtube, broadcast_id, PLAYLIST_ID)
 
 
-def go_end_stream(youtube, broadcast_id):
+def go_end_stream(youtube: build, broadcast_id: str) -> None:
     """Transition a scheduled broadcast to end the stream."""
     youtube.liveBroadcasts().transition(
         part="status",
@@ -175,12 +176,14 @@ def go_end_stream(youtube, broadcast_id):
     ).execute()
 
 
-def gen_stream_name_desc(camera: str, time:datetime) -> str:
+def gen_stream_name_desc(camera: str, time: datetime) -> str:
     return f"{camera.split()[0]} {time.split('.')[0]}", f"This stream is scheduled via the API for {camera}"
 
-def gen_start_time()-> datetime:
-        return (datetime.datetime.now(datetime.timezone.utc) +
-                  datetime.timedelta(hours=2)).isoformat()
+
+def gen_start_time() -> datetime:
+    return (datetime.datetime.now(datetime.timezone.utc) +
+            datetime.timedelta(hours=2)).isoformat()
+
 
 if __name__ == '__main__':
     # Authenticate and get the service object
@@ -196,7 +199,6 @@ if __name__ == '__main__':
     title, description = gen_stream_name_desc(camera, start_time)
 
     # Schedule the start time (for example, 1 hour from now)
-
 
     # Create scheduled broadcast
     broadcast_response = create_scheduled_broadcast(
