@@ -1,7 +1,7 @@
 from generate_token import get_authenticated_service
 import datetime
 
-PLAYLIST_ID = "SOMEPLAYLISTID"
+PLAYLIST_ID = ""
 
 
 def get_playlist_id(youtube_service, playlist_name):
@@ -176,7 +176,7 @@ def go_end_stream(youtube, broadcast_id):
 
 
 def gen_stream_name_desc(camera: str, time:datetime) -> str:
-    return f"{camera.split()[0] + time.split(".")[0]}", f"This stream is scheduled via the API for {camera}"
+    return f"{camera.split()[0]} {time.split('.')[0]}", f"This stream is scheduled via the API for {camera}"
 
 def gen_start_time()-> datetime:
         return (datetime.datetime.now(datetime.timezone.utc) +
