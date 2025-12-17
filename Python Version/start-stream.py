@@ -74,7 +74,7 @@ ffmpeg_command = [
     '-i', STREAM_URL,
     '-c', 'copy', # Highly efficient, no re-encoding
     '-f', 'flv',
-    f"rtmp://a.rtmp.youtube.com/live2/{YOUTUBE_KEY}"
+    f"rtmps://a.rtmp.youtube.com/live2/{YOUTUBE_KEY}"
 ]
 
 try:
