@@ -67,9 +67,9 @@ try:
         stderr=subprocess.PIPE,  # Capture standard error (stderr)
         start_new_session=True    # Decouple process from the terminal
     )
-
+    pid = process.pid
     # Print success message after starting the stream
-    print_message(f"Successfully started YouTube stream for {CAMERA_NAME}.")
+    print_message(f"Successfully started YouTube stream for {CAMERA_NAME} (PID: {pid}).")
     print_message(f"Stream is using YouTube key: {YOUTUBE_KEY}")
 
 except Exception as e:
