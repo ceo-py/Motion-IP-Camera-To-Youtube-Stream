@@ -8,6 +8,7 @@ import datetime
 import time
 
 PLAYLIST_ID = YOUTUBE["PLAYLIST_ID"]
+VIDEO_URL = YOUTUBE["VIDEO_URL"]
 
 
 def get_playlist_id(youtube_service: build, playlist_name: str) -> str | None:
@@ -222,7 +223,7 @@ def gen_start_time() -> datetime:
             datetime.timedelta(hours=2)).isoformat()
 
 
-def start_youtube_broadcast_stream(camera: str) -> None:
+def start_youtube_broadcast_stream(camera: str) -> str:
     youtube = get_authenticated_service()
     start_time = gen_start_time()
     title, description = gen_stream_name_desc(camera, start_time)
@@ -243,6 +244,8 @@ def start_youtube_broadcast_stream(camera: str) -> None:
 
     go_live(youtube, broadcast_id, camera)
     print_message(f"Broadcast {broadcast_id} is now live!")
+    video_link = f"{VIDEO_URL}{broadcast_id}"
+    return video_link
 
 
 

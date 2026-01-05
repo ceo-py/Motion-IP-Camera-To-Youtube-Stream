@@ -26,6 +26,7 @@ YOUTUBE = {
     "API_VERSION": 'v3',
     "TOKEN_FILE": 'token.json',
     "PLAYLIST_ID": 'PLV0e0d_ZUComWaSZdRi2wLH9MSYujkZvz',
+    "VIDEO_URL": 'https://www.youtube.com/watch?v=',
 }
 
 REDIS = {

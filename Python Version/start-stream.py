@@ -77,5 +77,5 @@ except Exception as e:
     sys.exit(1)
 
 # Send webhook notification
-send_webhook(CAMERA_NAME)
-start_youtube_broadcast_stream(CAMERA_NAME)
+video_link = start_youtube_broadcast_stream(CAMERA_NAME)
+send_webhook(CAMERA_NAME, video_link)

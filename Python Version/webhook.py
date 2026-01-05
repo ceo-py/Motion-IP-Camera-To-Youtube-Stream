@@ -12,7 +12,7 @@ except ImportError:
     print_message("Error: Could not find 'config.py'. Ensure it's in the same directory.")
     sys.exit(1)
 
-def send_webhook(CAMERA_NAME: str) -> None:
+def send_webhook(CAMERA_NAME: str, video_link: str) -> None:
     if CAMERA_NAME not in CAMERA_CONFIG:
         print_message(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
         sys.exit(1)
@@ -27,7 +27,7 @@ def send_webhook(CAMERA_NAME: str) -> None:
 
     # Construct the final message content
     CURRENT_TIME = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    FINAL_MESSAGE = f'{CAMERA_CONFIG[CAMERA_NAME]["MESSAGE"]} {CURRENT_TIME}'
+    FINAL_MESSAGE = f'{CAMERA_CONFIG[CAMERA_NAME]["MESSAGE"]} [{CURRENT_TIME}]({video_link})'
     DISCORD_WEBHOOK_URL = CAMERA_CONFIG[CAMERA_NAME]["WEBHOOK_URL"]
 
     payload = {
