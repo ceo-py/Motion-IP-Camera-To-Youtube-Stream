@@ -4,6 +4,7 @@ import sys
 import signal
 import time
 from utils import print_message
+from youtube import go_end_stream
 import subprocess
 
 
@@ -52,6 +53,8 @@ def is_ffmpeg_streaming(pid: int) -> None:
 
         except ProcessLookupError:
             print_message(f"Successfully stopped FFmpeg for {CAMERA_NAME} (PID: {pid})")
+            go_end_stream(CAMERA_NAME)
+
 
     except Exception as e:
         print_message(f"Error while managing PID: {e}")

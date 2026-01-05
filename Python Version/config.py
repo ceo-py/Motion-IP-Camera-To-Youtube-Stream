@@ -28,5 +28,10 @@ YOUTUBE = {
     "PLAYLIST_ID": 'PLV0e0d_ZUComWaSZdRi2wLH9MSYujkZvz',
 }
 
+REDIS = {
+    "PORT" : "PORT NUMBER INT",
+    "HOST" : "IP ADDRESS STR"
+}
+
 LOG_DIR = "PATH TO LOGS/logs"
 FFMPEG_BIN = "/usr/bin/ffmpeg"

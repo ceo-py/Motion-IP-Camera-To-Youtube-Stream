@@ -2,6 +2,7 @@ from generate_token import get_authenticated_service
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from utils import print_message
+from redis_utils import save_broadcast_id_to_redis, get_broadcast_id_from_redis
 from config import YOUTUBE
 import datetime
 import time
@@ -161,7 +162,7 @@ def bind_stream_to_broadcast(youtube: build, broadcast_id: str, stream_id: str) 
     return response
 
 
-def go_live(youtube: build, broadcast_id: str) -> None:
+def go_live(youtube: build, broadcast_id: str, camera: str) -> None:
     """Transition a scheduled broadcast to live with retry logic."""
     retries = 3
     for attempt in range(1, retries + 1):
@@ -176,6 +177,7 @@ def go_live(youtube: build, broadcast_id: str) -> None:
             # If successful, add the video to the playlist and return
             add_video_to_playlist(youtube, broadcast_id, PLAYLIST_ID)
             print_message(f"Broadcast {broadcast_id} is now live!")
+            save_broadcast_id_to_redis(camera, broadcast_id)
             return  # Exit the function on successful execution
 
         except HttpError as e:
@@ -197,13 +199,18 @@ def go_live(youtube: build, broadcast_id: str) -> None:
 
 
 
-def go_end_stream(youtube: build, broadcast_id: str) -> None:
+def go_end_stream(camera: str) -> None:
     """Transition a scheduled broadcast to end the stream."""
-    youtube.liveBroadcasts().transition(
-        part="status",
-        broadcastStatus="complete",  # Mark the stream as complete (ended)
-        id=broadcast_id
-    ).execute()
+    youtube = get_authenticated_service()
+    try:
+        broadcast_id = get_broadcast_id_from_redis(camera)
+        youtube.liveBroadcasts().transition(
+            part="status",
+            broadcastStatus="complete",  # Mark the stream as complete (ended)
+            id=broadcast_id
+        ).execute()
+    except Exception as e:
+        print_message(f"Failed to end stream {e}")
 
 
 def gen_stream_name_desc(camera: str, time: datetime) -> str:
@@ -234,7 +241,7 @@ def start_youtube_broadcast_stream(camera: str) -> None:
     bind_response = bind_stream_to_broadcast(youtube, broadcast_id, stream_id)
     print_message(f"Stream linked to broadcast: {bind_response['id']}")
 
-    go_live(youtube, broadcast_id)
+    go_live(youtube, broadcast_id, camera)
     print_message(f"Broadcast {broadcast_id} is now live!")
 
 
