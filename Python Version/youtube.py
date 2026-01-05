@@ -1,8 +1,12 @@
 from generate_token import get_authenticated_service
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from utils import print_message
+from config import YOUTUBE
 import datetime
+import time
 
-PLAYLIST_ID = "PLV0e0d_ZUComWaSZdRi2wLH9MSYujkZvz"
+PLAYLIST_ID = YOUTUBE["PLAYLIST_ID"]
 
 
 def get_playlist_id(youtube_service: build, playlist_name: str) -> str | None:
@@ -70,7 +74,7 @@ def add_video_to_playlist(youtube_service: build, video_id: str, playlist_id: st
         }
     )
     request.execute()
-    print(f"Added video {video_id} to the playlist.")
+    print_message(f"Added video {video_id} to the playlist.")
 
 
 def list_unlisted_live_videos(youtube_service: build) -> None:
@@ -158,13 +162,39 @@ def bind_stream_to_broadcast(youtube: build, broadcast_id: str, stream_id: str) 
 
 
 def go_live(youtube: build, broadcast_id: str) -> None:
-    """Transition a scheduled broadcast to live."""
-    youtube.liveBroadcasts().transition(
-        part="status",
-        broadcastStatus="live",
-        id=broadcast_id
-    ).execute()
-    add_video_to_playlist(youtube, broadcast_id, PLAYLIST_ID)
+    """Transition a scheduled broadcast to live with retry logic."""
+    retries = 3
+    for attempt in range(1, retries + 1):
+        try:
+            # Attempt to transition the broadcast to live
+            youtube.liveBroadcasts().transition(
+                part="status",
+                broadcastStatus="live",
+                id=broadcast_id
+            ).execute()
+
+            # If successful, add the video to the playlist and return
+            add_video_to_playlist(youtube, broadcast_id, PLAYLIST_ID)
+            print_message(f"Broadcast {broadcast_id} is now live!")
+            return  # Exit the function on successful execution
+
+        except HttpError as e:
+            # Handle specific error for inactive stream (stream not ready)
+            if e.resp.status == 403 and 'Stream is inactive' in e.content.decode():
+                print_message(f"Attempt {attempt}: Stream is inactive. Retrying in 5 seconds...")
+
+                # Wait for 5 seconds before retrying
+                time.sleep(5)
+
+            else:
+                # For other HttpErrors, raise the exception to stop further retries
+                print_message(f"Error transitioning stream {broadcast_id} to live: {e}")
+                raise
+
+    # If we exhausted all retries, log and raise an error
+    print_message(f"Failed to transition stream {broadcast_id} to live after {retries} attempts.")
+    raise Exception(f"Failed to make stream {broadcast_id} live after {retries} retries.")
+
 
 
 def go_end_stream(youtube: build, broadcast_id: str) -> None:
@@ -194,18 +224,18 @@ def start_youtube_broadcast_stream(camera: str) -> None:
     broadcast_response = create_scheduled_broadcast(
         youtube, title, description, start_time)
     broadcast_id = broadcast_response['id']
-    print(f"Scheduled Broadcast Created: {broadcast_id}")
+    print_message(f"Scheduled Broadcast Created: {broadcast_id}")
 
     stream_id = get_existing_stream_id(youtube, camera)
     if not stream_id:
-        print("Stream not found.")
+        print_message("Stream not found.")
         exit()
 
     bind_response = bind_stream_to_broadcast(youtube, broadcast_id, stream_id)
-    print(f"Stream linked to broadcast: {bind_response['id']}")
+    print_message(f"Stream linked to broadcast: {bind_response['id']}")
 
     go_live(youtube, broadcast_id)
-    print(f"Broadcast {broadcast_id} is now live!")
+    print_message(f"Broadcast {broadcast_id} is now live!")
 
 
 
@@ -228,22 +258,24 @@ def start_youtube_broadcast_stream(camera: str) -> None:
 #     broadcast_response = create_scheduled_broadcast(
 #         youtube, title, description, start_time)
 #     broadcast_id = broadcast_response['id']
-#     print(f"Scheduled Broadcast Created: {broadcast_id}")
+#     print_message(f"Scheduled Broadcast Created: {broadcast_id}")
 
 #     stream_id = get_existing_stream_id(youtube, camera)
 #     if not stream_id:
-#         print("Stream not found.")
+#         print_message("Stream not found.")
 #         exit()
 
 #     bind_response = bind_stream_to_broadcast(youtube, broadcast_id, stream_id)
-#     print(f"Stream linked to broadcast: {bind_response['id']}")
+#     print_message(f"Stream linked to broadcast: {bind_response['id']}")
 
 #     # Create stream and link to the broadcast
 #     # add_video_to_playlist(youtube, PLAYLIST_ID, broadcast_id)
 
 #     go_live(youtube, broadcast_id)
-#     print(f"Broadcast {broadcast_id} is now live!")
-#     # print(f"Stream created and linked to broadcast: {stream_response['id']}")
+#     print_message(f"Broadcast {broadcast_id} is now live!")
+#     # print_message(f"Stream created and linked to broadcast: {stream_response['id']}")
 
 
-start_youtube_broadcast_stream("Yard Camera")
+if __name__ == '__main__':
+    youtube = get_authenticated_service()
+    start_youtube_broadcast_stream("Yard")

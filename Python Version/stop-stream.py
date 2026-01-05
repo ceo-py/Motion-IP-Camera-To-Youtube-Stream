@@ -3,7 +3,7 @@ import os
 import sys
 import signal
 import time
-from datetime import datetime
+from utils import print_message
 import subprocess
 
 
@@ -14,12 +14,12 @@ try:
     # This imports CAMERA_CONFIG and FFMPEG_BIN
     from config import CAMERA_CONFIG
 except ImportError:
-    print("Error: Could not find 'config.py'. Ensure it's in the same directory.")
+    print_message("Error: Could not find 'config.py'. Ensure it's in the same directory.")
     sys.exit(1)
 
 # Get camera name from command line argument
 if len(sys.argv) < 2:
-    print("Usage: python stop_stream.py <CAMERA_NAME>")
+    print_message("Usage: python stop_stream.py <CAMERA_NAME>")
     sys.exit(1)
 
 
@@ -27,20 +27,12 @@ CAMERA_NAME = sys.argv[1]
 
 # --- Configuration & File Setup ---
 if CAMERA_NAME not in CAMERA_CONFIG:
-    print(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
+    print_message(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
     sys.exit(1)
 
 # Get the specific config for the camera
 CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
 STREAM_URL = CAM_CONFIG["STREAM_URL"]
-
-def print_message(message: str):
-    """Simple function to write a timestamped message."""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    full_message = f"{timestamp} - {message}"
-    print(full_message)
-
-
     
 
 def is_ffmpeg_streaming(pid: int) -> None:

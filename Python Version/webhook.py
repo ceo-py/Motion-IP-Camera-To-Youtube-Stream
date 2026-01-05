@@ -3,25 +3,26 @@ import urllib.error
 import datetime
 import json
 import sys
+from utils import print_message
 
 # --- Import Configuration ---
 try:
     from config import CAMERA_CONFIG
 except ImportError:
-    print("Error: Could not find 'config.py'. Ensure it's in the same directory.")
+    print_message("Error: Could not find 'config.py'. Ensure it's in the same directory.")
     sys.exit(1)
 
 def send_webhook(CAMERA_NAME: str) -> None:
     if CAMERA_NAME not in CAMERA_CONFIG:
-        print(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
+        print_message(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
         sys.exit(1)
 
     if "WEBHOOK_URL" not in CAMERA_CONFIG[CAMERA_NAME] or not CAMERA_CONFIG[CAMERA_NAME]["WEBHOOK_URL"]:
-        print(f"Error: Camera '{CAMERA_CONFIG[CAMERA_NAME]}' WEBHOOK_URL not defined in config.py.")
+        print_message(f"Error: Camera '{CAMERA_CONFIG[CAMERA_NAME]}' WEBHOOK_URL not defined in config.py.")
         sys.exit(1)
 
     if "MESSAGE" not in CAMERA_CONFIG[CAMERA_NAME] or not CAMERA_CONFIG[CAMERA_NAME]["MESSAGE"]:
-        print(f"Error: Camera '{CAMERA_CONFIG[CAMERA_NAME]}' MESSAGE not defined in config.py.")
+        print_message(f"Error: Camera '{CAMERA_CONFIG[CAMERA_NAME]}' MESSAGE not defined in config.py.")
         sys.exit(1)
 
     # Construct the final message content
@@ -34,7 +35,7 @@ def send_webhook(CAMERA_NAME: str) -> None:
     }
 
     try:
-        print(f"Sending Discord alert for {CAMERA_NAME}: '{FINAL_MESSAGE}'")
+        print_message(f"Sending Discord alert for {CAMERA_NAME}: '{FINAL_MESSAGE}'")
 
         # Assign the webhook URL to a local variable for clarity
         webhook_url = DISCORD_WEBHOOK_URL
@@ -60,20 +61,16 @@ def send_webhook(CAMERA_NAME: str) -> None:
         with urllib.request.urlopen(req, timeout=10) as response:
             # Discord returns 204 No Content on successful message post
             if response.getcode() == 204:
-                print(f"SUCCESS: Discord message sent.")
-                sys.exit(0)
+                print_message(f"SUCCESS: Discord message sent.")
             else:
                 # Handle unexpected success codes
-                print(f"INFO: Message sent, but unexpected status code: {response.getcode()}")
-                sys.exit(0)
+                print_message(f"INFO: Message sent, but unexpected status code: {response.getcode()}")
 
     except urllib.error.HTTPError as e:
         # Handles 4xx or 5xx errors from the server
-        print(f"ERROR: Failed to send Discord message. Status Code: {e.code}")
-        # print(f"Response Text: {e.read().decode('utf-8')}") # Uncomment for debugging
-        sys.exit(1)
+        print_message(f"ERROR: Failed to send Discord message. Status Code: {e.code}")
+        # print_message(f"Response Text: {e.read().decode('utf-8')}") # Uncomment for debugging
 
     except urllib.error.URLError as e:
         # Handles network issues (e.g., connection refused, DNS errors, timeout)
-        print(f"ERROR: Network or connection error while sending Discord message: {e.reason}")
-        sys.exit(1)
+        print_message(f"ERROR: Network or connection error while sending Discord message: {e.reason}")

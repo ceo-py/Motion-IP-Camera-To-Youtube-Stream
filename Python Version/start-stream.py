@@ -1,27 +1,27 @@
-import os
 import sys
 import subprocess
-from datetime import datetime
 from webhook import send_webhook
+from utils import print_message
+from youtube import start_youtube_broadcast_stream
 
 # --- Import Configuration ---
 try:
     # This imports CAMERA_CONFIG and FFMPEG_BIN
     from config import CAMERA_CONFIG, FFMPEG_BIN
 except ImportError:
-    print("Error: Could not find 'config.py'. Ensure it's in the same directory.")
+    print_message("Error: Could not find 'config.py'. Ensure it's in the same directory.")
     sys.exit(1)
 
 # Get camera name from command line argument
 if len(sys.argv) < 2:
-    print("Usage: python start_stream.py <CAMERA_NAME>")
+    print_message("Usage: python start_stream.py <CAMERA_NAME>")
     sys.exit(1)
 
 CAMERA_NAME = sys.argv[1]
 
 # --- Configuration & File Setup ---
 if CAMERA_NAME not in CAMERA_CONFIG:
-    print(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
+    print_message(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
     sys.exit(1)
 
 # Get the specific config for the camera
@@ -29,13 +29,7 @@ CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
 STREAM_URL = CAM_CONFIG["STREAM_URL"]
 YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
 
-def print_message(message):
-    """Simple function to print a timestamped message to the console."""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    full_message = f"{timestamp} - {message}"
-    print(full_message)
-
-# --- PID Check Logic --- 
+# --- PID Check Logic ---
 # Check if ffmpeg is already running for the specific camera stream
 def is_ffmpeg_streaming():
     try:
@@ -77,11 +71,11 @@ try:
     # Print success message after starting the stream
     print_message(f"Successfully started YouTube stream for {CAMERA_NAME}.")
     print_message(f"Stream is using YouTube key: {YOUTUBE_KEY}")
-    
+
 except Exception as e:
     print_message(f"FATAL ERROR starting stream: {e}")
     sys.exit(1)
 
 # Send webhook notification
 send_webhook(CAMERA_NAME)
-
+start_youtube_broadcast_stream(CAMERA_NAME)

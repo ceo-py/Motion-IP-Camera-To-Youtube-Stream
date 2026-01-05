@@ -19,5 +19,14 @@ CAMERA_CONFIG = {
     },
 }
 
+YOUTUBE = {
+    "SCOPES": ['https://www.googleapis.com/auth/youtube'],
+    "CLIENT_SECRETS_FILE": 'client_secret.json',
+    "API_SERVICE_NAME": 'youtube',
+    "API_VERSION": 'v3',
+    "TOKEN_FILE": 'token.json',
+    "PLAYLIST_ID": 'PLV0e0d_ZUComWaSZdRi2wLH9MSYujkZvz',
+}
+
 LOG_DIR = "PATH TO LOGS/logs"
 FFMPEG_BIN = "/usr/bin/ffmpeg"
