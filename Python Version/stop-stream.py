@@ -4,11 +4,15 @@ import sys
 import signal
 import time
 from datetime import datetime
+import subprocess
+
+
+
 
 # --- Import Configuration ---
 try:
-    # This imports CAMERA_CONFIG, LOG_DIR, and FFMPEG_BIN
-    from config import CAMERA_CONFIG, LOG_DIR
+    # This imports CAMERA_CONFIG and FFMPEG_BIN
+    from config import CAMERA_CONFIG
 except ImportError:
     print("Error: Could not find 'config.py'. Ensure it's in the same directory.")
     sys.exit(1)
@@ -18,38 +22,31 @@ if len(sys.argv) < 2:
     print("Usage: python stop_stream.py <CAMERA_NAME>")
     sys.exit(1)
 
+
 CAMERA_NAME = sys.argv[1]
 
-# --- Check if the camera name is valid ---
+# --- Configuration & File Setup ---
 if CAMERA_NAME not in CAMERA_CONFIG:
     print(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
     sys.exit(1)
 
-# Define file paths based on configuration constants
-LOG_FILE = os.path.join(LOG_DIR, f"ffmpeg-{CAMERA_NAME}.log")
-PID_FILE = os.path.join(LOG_DIR, f"ffmpeg-{CAMERA_NAME}.pid")
+# Get the specific config for the camera
+CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
+STREAM_URL = CAM_CONFIG["STREAM_URL"]
 
-# Ensure log directory exists (if not created by the start script)
-os.makedirs(LOG_DIR, exist_ok=True)
-
-
-def log_message(message):
-    """Simple function to write a timestamped message to the log file."""
+def print_message(message: str):
+    """Simple function to write a timestamped message."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     full_message = f"{timestamp} - {message}"
     print(full_message)
-    with open(LOG_FILE, 'a') as f:
-        f.write(full_message + '\n')
 
 
-# --- Stop Logic ---
-if os.path.exists(PID_FILE):
+    
+
+def is_ffmpeg_streaming(pid: int) -> None:
     try:
-        with open(PID_FILE, 'r') as f:
-            pid = int(f.read().strip())
-
         # 1. Attempt Graceful Stop (SIGTERM)
-        log_message(f"Attempting to gracefully stop FFmpeg for {CAMERA_NAME} (PID: {pid})")
+        print_message(f"Attempting to gracefully stop FFmpeg for {CAMERA_NAME} (PID: {pid})")
         os.kill(pid, signal.SIGTERM)
         time.sleep(3)
 
@@ -58,20 +55,31 @@ if os.path.exists(PID_FILE):
             os.kill(pid, 0)
 
             # If still alive, Force Kill (SIGKILL)
-            log_message(f"Graceful stop failed. Force killing FFmpeg (PID: {pid})")
+            print_message(f"Graceful stop failed. Force killing FFmpeg (PID: {pid})")
             os.kill(pid, signal.SIGKILL)
 
         except ProcessLookupError:
-            log_message(f"Successfully stopped FFmpeg for {CAMERA_NAME} (PID: {pid})")
+            print_message(f"Successfully stopped FFmpeg for {CAMERA_NAME} (PID: {pid})")
 
     except Exception as e:
-        log_message(f"Error while managing PID file: {e}")
+        print_message(f"Error while managing PID: {e}")
 
-    # Clean up the PID file
-    os.remove(PID_FILE)
 
-else:
-    log_message(f"No PID file found for {CAMERA_NAME}. Stream may not be running.")
+def stop_ffmpeg_stream():
+    """Check if any ffmpeg process is running with the specified stream URL."""
+    try:
+        # Run ps to check for ffmpeg processes
+        result = subprocess.run(
+            ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        # Search for the stream URL in the ffmpeg process list
+        for line in result.stdout.splitlines():
+            if 'ffmpeg' in line and STREAM_URL in line:
+                pid = int(line.split()[1])
+                is_ffmpeg_streaming(pid)
+                return
+        print_message(f"No active stream is found for {CAMERA_NAME}.")
+    except Exception as e:
+        print(f"Error checking ffmpeg process: {e}")
 
-# Example Usage:
-# python stop_stream.py Kitchen
+stop_ffmpeg_stream()

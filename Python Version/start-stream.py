@@ -1,13 +1,13 @@
-# start_stream.py
 import os
 import sys
 import subprocess
 from datetime import datetime
 from webhook import send_webhook
+
 # --- Import Configuration ---
 try:
-    # This imports CAMERA_CONFIG, LOG_DIR, and FFMPEG_BIN
-    from config import CAMERA_CONFIG, LOG_DIR, FFMPEG_BIN
+    # This imports CAMERA_CONFIG and FFMPEG_BIN
+    from config import CAMERA_CONFIG, FFMPEG_BIN
 except ImportError:
     print("Error: Could not find 'config.py'. Ensure it's in the same directory.")
     sys.exit(1)
@@ -29,82 +29,59 @@ CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
 STREAM_URL = CAM_CONFIG["STREAM_URL"]
 YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
 
-# Define file paths
-LOG_FILE = os.path.join(LOG_DIR, f"ffmpeg-{CAMERA_NAME}.log")
-PID_FILE = os.path.join(LOG_DIR, f"ffmpeg-{CAMERA_NAME}.pid")
-
-# Ensure log directory exists and is writable
-os.makedirs(LOG_DIR, mode=0o775, exist_ok=True)
-
-
-def log_message(message):
-    """Simple function to write a timestamped message to the log file."""
+def print_message(message):
+    """Simple function to print a timestamped message to the console."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     full_message = f"{timestamp} - {message}"
     print(full_message)
-    with open(LOG_FILE, 'a') as f:
-        f.write(full_message + '\n')
 
-
-# --- PID Check Logic ---
-if os.path.exists(PID_FILE):
+# --- PID Check Logic --- 
+# Check if ffmpeg is already running for the specific camera stream
+def is_ffmpeg_streaming():
     try:
-        with open(PID_FILE, 'r') as f:
-            pid = int(f.read().strip())
-
-        # Check if PID is active (os.kill(pid, 0) checks existence without signaling)
-        os.kill(pid, 0)
-        log_message(f"Stream already running for {CAMERA_NAME} (PID: {pid})")
-        sys.exit(0)
-
-    except ProcessLookupError:
-        # Process is dead, but PID file exists (stale)
-        log_message("Stale PID file found, removing...")
-        os.remove(PID_FILE)
+        result = subprocess.run(
+            ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        for line in result.stdout.splitlines():
+            if 'ffmpeg' in line and STREAM_URL in line:
+                print_message(f"Stream already running for {CAMERA_NAME} (process found).")
+                return True
+        return False
     except Exception as e:
-        log_message(f"Error checking PID file: {e}")
+        print_message(f"Error checking ffmpeg process: {e}")
+        return False
 
+# Check if the stream is already running
+if is_ffmpeg_streaming():
+    sys.exit(0)
 
 # --- Start FFmpeg Stream ---
-
-# The full command list for subprocess
 ffmpeg_command = [
     FFMPEG_BIN,
     '-rtsp_transport', 'tcp',
     '-i', STREAM_URL,
-    '-c', 'copy', # Highly efficient, no re-encoding
+    '-c', 'copy',  # Highly efficient, no re-encoding
     '-f', 'flv',
     f"rtmps://a.rtmp.youtube.com/live2/{YOUTUBE_KEY}"
 ]
 
 try:
-    # Use subprocess.Popen for non-blocking, background execution.
-    # stdout and stderr are redirected to the log file.
-    with open(LOG_FILE, 'a') as log_f:
-        process = subprocess.Popen(
-            ffmpeg_command,
-            stdout=log_f,
-            stderr=subprocess.STDOUT, # Direct stderr to the same log file
-            start_new_session=True    # Important: Decouples the process from the script's terminal
-        )
+    # Start the ffmpeg process in the background
+    process = subprocess.Popen(
+        ffmpeg_command,
+        stdout=subprocess.PIPE,  # Capture standard output (stdout)
+        stderr=subprocess.PIPE,  # Capture standard error (stderr)
+        start_new_session=True    # Decouple process from the terminal
+    )
 
-    # Save process ID
-    pid = process.pid
-    with open(PID_FILE, 'w') as f:
-        f.write(str(pid))
-
-    log_message(f"Successfully started YouTube stream for {CAMERA_NAME} (PID: {pid})")
-    log_message(f"Stream is using YouTube key: {YOUTUBE_KEY}")
-
-    # You can now integrate your Discord message logic here, using the CHAT_INFO variable
-    # print(f"\nDiscord Action: Preparing message for channel '{CHAT_INFO}'...")
-
+    # Print success message after starting the stream
+    print_message(f"Successfully started YouTube stream for {CAMERA_NAME}.")
+    print_message(f"Stream is using YouTube key: {YOUTUBE_KEY}")
+    
 except Exception as e:
-    log_message(f"FATAL ERROR starting stream: {e}")
-    # Clean up PID file if creation failed
-    if os.path.exists(PID_FILE):
-        os.remove(PID_FILE)
+    print_message(f"FATAL ERROR starting stream: {e}")
+    sys.exit(1)
 
+# Send webhook notification
 send_webhook(CAMERA_NAME)
-# Example Usage:
-# python start_stream.py Kitchen
+
