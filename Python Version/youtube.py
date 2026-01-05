@@ -2,7 +2,7 @@ from generate_token import get_authenticated_service
 from googleapiclient.discovery import build
 import datetime
 
-PLAYLIST_ID = ""
+PLAYLIST_ID = "PLV0e0d_ZUComWaSZdRi2wLH9MSYujkZvz"
 
 
 def get_playlist_id(youtube_service: build, playlist_name: str) -> str | None:
@@ -185,20 +185,10 @@ def gen_start_time() -> datetime:
             datetime.timedelta(hours=2)).isoformat()
 
 
-if __name__ == '__main__':
-    # Authenticate and get the service object
+def start_youtube_broadcast_stream(camera: str) -> None:
     youtube = get_authenticated_service()
-
-    # playlist_id = get_playlist_id(youtube, "Cameras")
-
-    # list_unlisted_live_videos(youtube)
-
-    # Define stream details
-    camera = "Yard Camera"
     start_time = gen_start_time()
     title, description = gen_stream_name_desc(camera, start_time)
-
-    # Schedule the start time (for example, 1 hour from now)
 
     # Create scheduled broadcast
     broadcast_response = create_scheduled_broadcast(
@@ -214,9 +204,46 @@ if __name__ == '__main__':
     bind_response = bind_stream_to_broadcast(youtube, broadcast_id, stream_id)
     print(f"Stream linked to broadcast: {bind_response['id']}")
 
-    # Create stream and link to the broadcast
-    # add_video_to_playlist(youtube, PLAYLIST_ID, broadcast_id)
-
     go_live(youtube, broadcast_id)
     print(f"Broadcast {broadcast_id} is now live!")
-    # print(f"Stream created and linked to broadcast: {stream_response['id']}")
+
+
+
+# if __name__ == '__main__':
+#     # Authenticate and get the service object
+#     youtube = get_authenticated_service()
+
+#     # playlist_id = get_playlist_id(youtube, "Cameras")
+
+#     # list_unlisted_live_videos(youtube)
+
+#     # Define stream details
+#     camera = "Yard Camera"
+#     start_time = gen_start_time()
+#     title, description = gen_stream_name_desc(camera, start_time)
+
+#     # Schedule the start time (for example, 1 hour from now)
+
+#     # Create scheduled broadcast
+#     broadcast_response = create_scheduled_broadcast(
+#         youtube, title, description, start_time)
+#     broadcast_id = broadcast_response['id']
+#     print(f"Scheduled Broadcast Created: {broadcast_id}")
+
+#     stream_id = get_existing_stream_id(youtube, camera)
+#     if not stream_id:
+#         print("Stream not found.")
+#         exit()
+
+#     bind_response = bind_stream_to_broadcast(youtube, broadcast_id, stream_id)
+#     print(f"Stream linked to broadcast: {bind_response['id']}")
+
+#     # Create stream and link to the broadcast
+#     # add_video_to_playlist(youtube, PLAYLIST_ID, broadcast_id)
+
+#     go_live(youtube, broadcast_id)
+#     print(f"Broadcast {broadcast_id} is now live!")
+#     # print(f"Stream created and linked to broadcast: {stream_response['id']}")
+
+
+start_youtube_broadcast_stream("Yard Camera")
