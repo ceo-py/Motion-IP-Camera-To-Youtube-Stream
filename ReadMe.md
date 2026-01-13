@@ -1,7 +1,6 @@
+# Motion Detection System with AI Filtering, Discord Notifications, and YouTube Streaming
 
-# Motion Detection System with Discord Notifications and YouTube Streaming
-
-This project provides two distinct methods for setting up a real-time motion detection system using the [Motion](https://motion-project.github.io/) daemon and IP cameras. When motion is detected, the system automatically sends a notification and starts a YouTube live stream, which stops when the motion event concludes.
+This project provides a real-time motion detection system using the [Motion](motion-project.github.io) daemon and IP cameras. The system features **AI-driven object detection** to filter out false positives and provides direct YouTube live links via Discord webhooks.
 
 No videos or snapshots are saved on the server; all processing occurs in real-time.
 
@@ -9,14 +8,30 @@ No videos or snapshots are saved on the server; all processing occurs in real-ti
 
 ## 🚀 Features
 
+* **AI Filtering (V3 Large):** Uses **SSD-MobileNetV3-Large** to verify if motion is caused by a **human, dog, or cat** before triggering alerts.
 * **Real-time** motion detection from multiple IP cameras.
-* **Discord notifications** for each motion event.
-* **Automatic YouTube live streaming** while motion is detected.
-* Automatic stopping of streams when motion ends.
-* Minimal server storage usage.
-* Highly configurable for any number of cameras.
+* **Discord notifications** with camera name, timestamp, and **direct YouTube live links**.
+* **Automatic YouTube live streaming** initiated only when a target is confirmed by the AI.
+* **Optimized for Old Hardware:** Specifically tuned for low CPU usage on systems like 2010+ CPU`s.
 
 ---
+
+# 🧠 AI Detection & Filtering (V3 Large)
+
+To reduce false alarms caused by wind, shadows, or cars, the system utilizes a lightweight TensorFlow-based detection module.
+Model Setup
+Place the following files in a /models subdirectory relative to your scripts:
+frozen_inference_graph.pb (MobileNet V3 Large weights)
+ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt (OpenCV config map)
+Logic: When Motion triggers an event, detect.py clears the stale RTSP buffer (skipping 15 frames) and analyzes the live frame. If a target ID (1: Person, 17: Cat, 18: Dog) is not detected with >55% confidence, the script exits immediately to save CPU and prevents a false alarm broadcast.
+
+### AI Dependencies
+The system requires OpenCV with DNN support:
+```bash
+pip install opencv-python-headless
+```
+
+
 
 # Method 1: Python System (Recommended for Scalability) 🐍
 
