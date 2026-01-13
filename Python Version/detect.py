@@ -15,12 +15,6 @@ if not os.path.exists(PB_FILE) or not os.path.exists(PBTXT_FILE):
     print(f"Looking for:\n - {PB_FILE}\n - {PBTXT_FILE}")
     sys.exit(1)
 
-# Check if the PBTXT is actually valid text (not an HTML page)
-if os.path.getsize(PBTXT_FILE) > 100000: # Usually ~30-40KB, HTML is >100KB
-    print("Error: PBTXT file is too large. You likely downloaded the GitHub HTML page.")
-    print("Please use: wget raw.githubusercontent.com")
-    sys.exit(1)
-
 # Load the model into RAM once at module level
 try:
     NET = cv2.dnn.readNetFromTensorflow(PB_FILE, PBTXT_FILE)
@@ -63,13 +57,13 @@ def is_target_present(rtsp_url):
     # detections.shape[2] contains the list of objects found
     for i in range(detections.shape[2]):
         confidence = detections[0, 0, i, 2]
-        
+
         if confidence > 0.55:  # Accuracy threshold
             class_id = int(detections[0, 0, i, 1])
-            
+
             if class_id in TARGETS:
                 return True
-    
+
     return False
 
 # Self-test logic (if run directly)
