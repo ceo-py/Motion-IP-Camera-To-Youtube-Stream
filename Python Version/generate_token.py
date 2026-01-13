@@ -31,12 +31,7 @@ def get_authenticated_service():
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'rb') as token:
             credentials = pickle.load(token)
-            # print_message(credentials.expiry)
-            last_modified_time = os.path.getmtime(TOKEN_FILE)
-            # last_modified_time = datetime.utcfromtimestamp(last_modified_time)
-            # print_message(last_modified_time)
 
-            # credentials.refresh(Request())
     else:
         flow = InstalledAppFlow.from_client_secrets_file(
             CLIENT_SECRETS_FILE, SCOPES)
@@ -57,7 +52,7 @@ def get_authenticated_service():
                 "Enter the authorization code from the redirected URL: ")
             flow.fetch_token(code=code)
             credentials = flow.credentials
-        save_token(credentials)
+            save_token(credentials)
 
     return build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
 

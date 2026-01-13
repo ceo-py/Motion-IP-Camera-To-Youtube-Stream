@@ -3,6 +3,7 @@ import subprocess
 from webhook import send_webhook
 from utils import print_message
 from youtube import start_youtube_broadcast_stream
+from detect import is_target_present
 
 # --- Import Configuration ---
 try:
@@ -28,6 +29,11 @@ if CAMERA_NAME not in CAMERA_CONFIG:
 CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
 STREAM_URL = CAM_CONFIG["STREAM_URL"]
 YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
+
+# Check for human or animals
+if not is_target_present(STREAM_URL):
+    print_message("No Human/Animal found!!")
+    sys.exit(0)
 
 # --- PID Check Logic ---
 # Check if ffmpeg is already running for the specific camera stream
