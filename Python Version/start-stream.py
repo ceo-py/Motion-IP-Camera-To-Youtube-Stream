@@ -30,9 +30,10 @@ CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
 STREAM_URL = CAM_CONFIG["STREAM_URL"]
 YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
 
-# Check for human or animals
-if not is_target_present(STREAM_URL):
-    print_message("No Human/Animal found!!")
+
+target_found = is_target_present(STREAM_URL)
+if not target_found:
+    print_message("No Human/Animal Detected!!")
     sys.exit(0)
 
 # --- PID Check Logic ---
@@ -76,12 +77,13 @@ try:
     pid = process.pid
     # Print success message after starting the stream
     print_message(f"Successfully started YouTube stream for {CAMERA_NAME} (PID: {pid}).")
+    # Print success message after starting the stream
     print_message(f"Stream is using YouTube key: {YOUTUBE_KEY}")
 
 except Exception as e:
     print_message(f"FATAL ERROR starting stream: {e}")
     sys.exit(1)
 
-# Send webhook notification
+
 video_link = start_youtube_broadcast_stream(CAMERA_NAME)
-send_webhook(CAMERA_NAME, video_link)
+send_webhook(CAMERA_NAME, video_link, target_found)
