@@ -214,3 +214,119 @@ sudo systemctl start ip-camera-api.service
 ```bash
 sudo systemctl status ip-camera-api.service
 ```
+
+
+Sure! Here's the **Version History** section styled in the format suitable for a `README.md` file, with the latest changes at the top:
+
+---
+
+## 📅 Version History
+
+### **[v1.7.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/6990b67f5a3541ec571664d0e3f9d770f1877822)** – Enhance motion detection with YOLOv4 ONNX and object verification API
+
+* **Features**:
+
+  * Replaced previous detection model with **YOLOv4 ONNX** (`yolo11n.onnx`) for more accurate object detection.
+  * Integrated a new **local API** to handle object detection and filter motion events based on AI results (human, dog, cat).
+  * Streamlined detection process to reduce CPU usage by calling the AI model only when motion is detected.
+  * Added a confidence threshold of **50%** to ensure that only valid detections trigger actions (e.g., YouTube streaming, Discord alerts).
+
+**Key Changes**:
+
+* Replaced `detect.py` logic to integrate YOLOv4 ONNX for object detection via an API.
+* Refactored object detection flow to improve accuracy and reduce false alarms (especially from wind, shadows, or cars).
+* Updated Motion configuration to call the new API, ensuring AI checks before triggering alerts.
+* Enhanced webhook notification to include the detected object type and confidence level before initiating the stream.
+* Optimized CPU performance by skipping stale frames and minimizing redundant processing.
+
+---
+
+### **[v1.6.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/753fb3cbf156b9a7f50af3309057fc197f8d21e8)** – Migrate object detection to MobileNet V3 Large
+
+* **Features**:
+
+  * Upgraded the primary detection model to **SSD-MobileNetV3-Large** for improved accuracy and reduced false positives compared to the previous version.
+  * Preserved the original MobileNet V2 implementation for legacy compatibility and testing purposes.
+
+**Key Changes**:
+
+* Replaced MobileNet V2 with **SSD-MobileNetV3-Large** in `detect.py`.
+* Renamed the previous V2 detection script to `detect_v2.py`.
+
+---
+
+### **[v1.5.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/7344aed9e06dbc418f4f67e27df90a4a3be01dc1)** – Added AI object detection
+
+* **Features**:
+
+  * Integrated **MobileNet-SSD version 2** to verify **humans and animals** before starting the broadcast, reducing false detections from environmental motion.
+
+**Key Changes**:
+
+* Added `is_target_present` check to filter motion events before initiating streaming.
+
+---
+
+### **[v1.4.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/5bf5c6efccb731db457f1b98d0373f675d730154)** – Integrate YouTube broadcast with camera stream and automate playlist management
+
+* **Features**:
+
+  * Integrated camera stream with **YouTube live broadcasting**.
+  * After starting the stream, the system automatically creates a YouTube broadcast, transitions it to live status, and adds the stream to a specified playlist.
+
+**Key Changes**:
+
+* Added logic to create a scheduled YouTube broadcast for the camera stream.
+* Implemented automatic transition of the broadcast to live status once the stream starts.
+* Added ability to add the live stream to a specified playlist.
+* Streamlined the process for starting a YouTube live broadcast directly from the camera stream.
+
+---
+
+### **[v1.3.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/75f996df9958ca5851b45ce35d0b8ae7d46020af)** – Implement automated YouTube live stream creation, scheduling, and playlist integration
+
+* **Features**:
+
+  * Added functionality to automate the creation, scheduling, and management of YouTube live broadcasts.
+  * Included a feature to automatically add live broadcasts to a specified playlist after they go live.
+
+**Key Changes**:
+
+* Added `create_stream.py` to handle the creation of live broadcasts on YouTube via the Google API.
+* Integrated stream scheduling functionality, allowing broadcasts to be scheduled in advance with specific stream keys.
+* Implemented automated transition to live status for broadcasts when the stream is active.
+* Added logic to add live broadcasts to playlists upon going live.
+
+---
+
+### **[v1.2.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/77a5239e9b30eb6ba872b2c05875487f24e4f934)** – Major refactor of event triggering logic for scalability
+
+* **Features**:
+
+  * Migrated core logic (FFmpeg process management, stream start/stop, Discord notification) from fragmented Bash scripts to a modular Python system (`start_stream.py`, `stop_stream.py`, `send_webhook.py`).
+  * Introduced `config.py` to centralize all camera settings (RTSP URLs, YouTube keys, Discord webhooks).
+
+**Key Changes**:
+
+* Simplified the process for handling multiple cameras by centralizing configurations in a single file.
+* Improved maintainability and debugging by using Python scripts instead of Bash.
+* Updated the README to document the new Python method alongside legacy Bash implementation.
+
+**Impact**:
+
+* Reduces configuration duplication and simplifies debugging.
+* Enables easier scaling and better management of camera streams.
+
+---
+
+### **[v1.1.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/71e532ef273aac2603cb364e972c57bea18a61f7)** – Added basic motion detection and alerting
+
+* **Features**:
+
+  * Basic motion detection using `Motion` daemon and IP cameras.
+  * No AI filtering or object detection.
+  * Sends basic alerts to Discord when motion is detected.
+  * One camera stream per one YouTube account.
+  * Full Bash scripting for configuration.
+
+---
