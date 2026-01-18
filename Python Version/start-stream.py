@@ -44,7 +44,7 @@ def is_ffmpeg_streaming():
             ['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
         for line in result.stdout.splitlines():
-            if 'ffmpeg' in line and STREAM_URL in line:
+            if 'ffmpeg' in line and YOUTUBE_KEY in line:
                 print_message(f"Stream already running for {CAMERA_NAME} (process found).")
                 return True
         return False

@@ -222,7 +222,7 @@ Sure! Here's the **Version History** section styled in the format suitable for a
 
 ## 📅 Version History
 
-### **[v1.7.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/6990b67f5a3541ec571664d0e3f9d770f1877822)** – Enhance motion detection with YOLOv4 ONNX and object verification API
+### **v1.7.0 Latest** – Enhance motion detection with YOLOv4 ONNX and object verification API
 
 * **Features**:
 

@@ -33,7 +33,7 @@ if CAMERA_NAME not in CAMERA_CONFIG:
 
 # Get the specific config for the camera
 CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
-STREAM_URL = CAM_CONFIG["STREAM_URL"]
+YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
     
 
 def is_ffmpeg_streaming(pid: int) -> None:
@@ -69,7 +69,7 @@ def stop_ffmpeg_stream():
         )
         # Search for the stream URL in the ffmpeg process list
         for line in result.stdout.splitlines():
-            if 'ffmpeg' in line and STREAM_URL in line:
+            if 'ffmpeg' in line and YOUTUBE_KEY in line:
                 pid = int(line.split()[1])
                 is_ffmpeg_streaming(pid)
                 return
