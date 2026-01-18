@@ -78,10 +78,6 @@ Place the following Python scripts and configuration file in a dedicated directo
 8. **`youtube.py`**: Contains the logic for interacting with the YouTube API, including starting a live stream, saving videos to a playlist, stopping the stream, and managing all other aspects of YouTube streaming and broadcasting.
 9. **`utils.py`**: Provides helper functions for formatting and sending messages. This script includes functions for adding timestamps and other relevant information to the notifications that are sent via Discord.
 
----
-
-Let me know if you need any other adjustments!
-
 
 ### Permissions (MANDATORY)
 
@@ -136,6 +132,11 @@ on_event_start /usr/bin/python3 /path/to/your/scripts/start_stream.py Kitchen
 on_event_end /usr/bin/python3 /path/to/your/scripts/stop_stream.py Kitchen
 ```
 
+## 📝 Notes
+
+* **Tuning:** Adjust `threshold` and `minimum_motion_frames` in Motion’s config file for correct motion sensitivity.
+* **Testing:** Use `emulate_motion on` in your camera config for testing automation and verifying that triggers are firing correctly.
+
 ---
 
 # 🧩 Running the System (Both Methods)
@@ -147,16 +148,6 @@ on_event_end /usr/bin/python3 /path/to/your/scripts/stop_stream.py Kitchen
    sudo systemctl restart motion
    sudo systemctl status motion
    ```
-
-2. **Check camera logs** for execution success:
-
-   ```bash
-   sudo tail -f /var/log/motion/motion.log
-   # Check Python logs for PID files and timestamps (Python Method Only):
-   sudo tail -f /PATH/TO/YOUR/SCRIPTS/logs/ffmpeg-Kitchen.log
-   ```
-
----
 
 ## 🔑 Google API Authentication (`token.json`)
 
@@ -174,14 +165,6 @@ To interact with YouTube's API for live streaming, authenticate with Google and 
 
 4. **Use `token.json` for Authentication** in the Python scripts (`start_stream.py`, `stop_stream.py`) to authenticate and interact with YouTube’s API.
 
----
-
-## 📝 Notes
-
-* **Tuning:** Adjust `threshold` and `minimum_motion_frames` in Motion’s config file for correct motion sensitivity.
-* **Testing:** Use `emulate_motion on` in your camera config for testing automation and verifying that triggers are firing correctly.
-
----
 
 ### **Updated AI Integration:**
 
