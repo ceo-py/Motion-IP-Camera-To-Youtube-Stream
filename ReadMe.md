@@ -1,7 +1,3 @@
-Sure! Here’s an updated version of your **README** with the addition of the **API service configuration** using **Gunicorn**. I’ve generalized the paths, so they aren't hard-coded.
-
----
-
 # Motion Detection System with AI Filtering, Discord Notifications, and YouTube Streaming
 
 This project provides a **real-time motion detection system** using the [Motion](motion-project.github.io) daemon and IP cameras. The system features **AI-driven object detection** to filter out false positives and provides direct **YouTube live links** via Discord webhooks.
