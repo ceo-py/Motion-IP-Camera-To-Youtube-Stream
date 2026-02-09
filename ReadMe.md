@@ -9,7 +9,7 @@ No videos or snapshots are saved on the server; all processing occurs in real-ti
 ## 🚀 Features
 
 * **Custom Motion Soft-Trigger**: Uses a dedicated Python script (`motion_detector.py`) to monitor RTSP streams for movement, replacing the legacy `motion` daemon.
-* **AI Filtering (YOLOv4 with ONNX)**: Uses **YOLOv4 ONNX** model (`yolo11n.onnx`) for object detection. It checks if motion is caused by a **human** (default target for alerts) or a **dog**/ **cat**.
+* **AI Filtering (YOLOv4 / Ultralytics)**: Uses the **YOLO26x** model (`yolo26x.onnx`) for high-accuracy object detection. It checks if motion is caused by a **human** (default target for alerts), **dog**, or **cat**.
 * **Discord notifications** with camera name, timestamp, and **direct YouTube live links**.
 * **Automatic YouTube live streaming**: Initiated only when a **human** is detected by the AI.
 * **Optimized for Performance**: The AI model is loaded into memory once by a local API, ensuring rapid verification without reloading the model for every trigger.
@@ -34,7 +34,10 @@ The system is fully Python-based and operates in a streamlined sequence:
 
 ### 1. Model Setup
 
-Place the `yolo11n.onnx` file in the `/models` subdirectory.
+The system uses the high-performance `yolo26x.onnx` model. Due to its size, you must download it manually:
+
+1.  Download the model from the [Ultralytics GitHub Repository](https://github.com/ultralytics/ultralytics).
+2.  Place the `yolo26x.onnx` file in the `/models` subdirectory of your project.
 
 ### 2. Dependencies
 
@@ -118,9 +121,10 @@ sudo systemctl start ip-camera-api.service motion-detection.service
 
 ## 📅 Version History
 
-### **v1.8.0 Latest** – Removed Motion Daemon, added Custom Python Soft-Trigger
+### **v1.8.0 Latest** – Switched to YOLO26X & Removed Motion Daemon
 * **Features**:
-  * Completely removed dependency on the `motion` daemon.
+  * **Upgraded to YOLO26X**: Replaced `yolo11n` with the larger, more accurate `yolo26x.onnx` model for superior detection.
+  * Completely removed dependency on the `motion` daemon in favor of a custom Python soft-trigger.
   * Introduced `motion_detector.py` for efficient movement detection.
   * Optimized AI verification: The model is now kept resident in memory via `api.py` to prevent reload delays.
   * Integrated systemd services for both the detector and the AI API.
@@ -129,7 +133,7 @@ sudo systemctl start ip-camera-api.service motion-detection.service
 
 ### **v1.7.0** – Enhance motion detection with YOLOv4 ONNX and object verification API
 * **Features**:
-  * Replaced previous detection model with **YOLOv4 ONNX** (`yolo11n.onnx`).
+  * Replaced previous detection model with **YOLOv4 ONNX**.
   * Integrated local API to handle object detection.
   * Added a confidence threshold of **50%**.
 

@@ -38,7 +38,7 @@ LOG_DIR = "PATH TO LOGS/logs"
 FFMPEG_BIN = "/usr/bin/ffmpeg"
 
 # API CONFIGURATION
-MODEL = "yolo11n.onnx"
+MODEL = "yolo26x.onnx"
 TARGET_ACTIVATION = [0, 14, 15, 16]
 DETECT_CONF = 0.50
 IMAGE_SIZE = 640
