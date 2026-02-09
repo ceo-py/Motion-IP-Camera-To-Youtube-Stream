@@ -131,7 +131,7 @@ sudo systemctl start ip-camera-api.service motion-detection.service
 
 ---
 
-### **v1.7.0** – Enhance motion detection with YOLOv4 ONNX and object verification API
+### **[v1.7.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/63e30263a82133424a4f6745055ad0e4cfd035d8)** – Enhance motion detection with YOLOv4 ONNX and object verification API
 * **Features**:
   * Replaced previous detection model with **YOLOv4 ONNX**.
   * Integrated local API to handle object detection.
@@ -139,37 +139,37 @@ sudo systemctl start ip-camera-api.service motion-detection.service
 
 ---
 
-### **[v1.6.0]** – Migrate object detection to MobileNet V3 Large
+### **[v1.6.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/753fb3cbf156b9a7f50af3309057fc197f8d21e8)** – Migrate object detection to MobileNet V3 Large
 * **Features**:
   * Upgraded detection model for improved accuracy.
 
 ---
 
-### **[v1.5.0]** – Added AI object detection
+### **[v1.5.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/7344aed9e06dbc418f4f67e27df90a4a3be01dc1)** – Added AI object detection
 * **Features**:
   * Integrated MobileNet-SSD version 2 for verification.
 
 ---
 
-### **[v1.4.0]** – Integrate YouTube broadcast with camera stream
+### **[v1.4.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/5bf5c6efccb731db457f1b98d0373f675d730154)** – Integrate YouTube broadcast with camera stream
 * **Features**:
   * Automated creation and live-transition of YouTube broadcasts.
 
 ---
 
-### **[v1.3.0]** – Implement automated YouTube live stream management
+### **[v1.3.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/75f996df9958ca5851b45ce35d0b8ae7d46020af)** – Implement automated YouTube live stream management
 * **Features**:
   * Added scheduling and automatic playlist integration.
 
 ---
 
-### **[v1.2.0]** – Major refactor of event triggering logic
+### **[v1.2.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/77a5239e9b30eb6ba872b2c05875487f24e4f934)** – Major refactor of event triggering logic
 * **Features**:
   * Migrated from Bash scripts to modular Python scripts and `config.py`.
 
 ---
 
-### **[v1.1.0]** – Added basic motion detection and alerting
+### **[v1.1.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/71e532ef273aac2603cb364e972c57bea18a61f7)** – Added basic motion detection and alerting
 * **Features**:
   * Initial implementation with basic alerts and no AI filtering.
 
