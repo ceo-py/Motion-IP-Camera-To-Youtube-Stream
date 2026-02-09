@@ -1,0 +1,14 @@
+[Unit]
+Description=Motion Detection Automate System
+After=network.target
+
+[Service]
+User=user
+WorkingDirectory=/home/user/production/ip-camera
+ExecStart=/home/user/production/ip-camera/venv/bin/python3 /home/user/production/ip-camera/motion_detection.py
+Restart=always
+RestartSec=3
+Environment="PATH=/home/user/production/ip-camera/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+[Install]
+WantedBy=multi-user.target

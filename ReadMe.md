@@ -1,6 +1,6 @@
 # Motion Detection System with AI Filtering, Discord Notifications, and YouTube Streaming
 
-This project provides a **real-time motion detection system** using the [Motion](motion-project.github.io) daemon and IP cameras. The system features **AI-driven object detection** to filter out false positives and provides direct **YouTube live links** via Discord webhooks.
+This project provides a **real-time motion detection system** using a custom Python-based soft-trigger system and IP cameras. The system features **AI-driven object detection** to filter out false positives and provides direct **YouTube live links** via Discord webhooks.
 
 No videos or snapshots are saved on the server; all processing occurs in real-time.
 
@@ -8,325 +8,165 @@ No videos or snapshots are saved on the server; all processing occurs in real-ti
 
 ## 🚀 Features
 
+* **Custom Motion Soft-Trigger**: Uses a dedicated Python script (`motion_detector.py`) to monitor RTSP streams for movement, replacing the legacy `motion` daemon.
 * **AI Filtering (YOLOv4 with ONNX)**: Uses **YOLOv4 ONNX** model (`yolo11n.onnx`) for object detection. It checks if motion is caused by a **human** (default target for alerts) or a **dog**/ **cat**.
-* **Real-time motion detection** from multiple IP cameras.
 * **Discord notifications** with camera name, timestamp, and **direct YouTube live links**.
-* **Automatic YouTube live streaming** is initiated only when a **human** is detected by the AI.
-* **Optimized for Low CPU Usage**: Specifically tuned for low CPU usage on older hardware (e.g., 2010+ CPUs).
+* **Automatic YouTube live streaming**: Initiated only when a **human** is detected by the AI.
+* **Optimized for Performance**: The AI model is loaded into memory once by a local API, ensuring rapid verification without reloading the model for every trigger.
 
 ---
 
-# 🧠 AI Detection & Filtering (YOLOv4 ONNX)
+# 🧠 How it Works (Logic Flow)
 
-To reduce false alarms caused by wind, shadows, or cars, the system utilizes the **YOLOv4 ONNX** model to detect **humans, cats, and dogs**. This helps ensure that only valid motion events trigger alerts and YouTube streaming.
+The system is fully Python-based and operates in a streamlined sequence:
 
-### Model Setup
+1.  **Detection (`motion_detector.py`)**: Continuously monitors low-resolution RTSP streams for pixel changes. This acts as a "soft trigger" to minimize resource usage.
+2.  **Trigger (`start-stream.py`)**: When significant motion is detected, `motion_detector.py` triggers this script.
+3.  **AI Verification (`detect.py` & `api.py`)**: `start-stream.py` calls the local AI API.
+    *   **Crucial**: `api.py` loads the YOLOv4 model into RAM on startup. Subsequent calls for detection are nearly instantaneous because the model is **already in memory**.
+4.  **Streaming**: If the AI confirms a **human**, an FFmpeg process is started to stream the high-resolution feed to YouTube.
+5.  **Notification**: A Discord webhook is sent with the live YouTube link.
+6.  **Cleanup (`stop-stream.py`)**: After the motion stops and a cooldown period expires, the detector calls this script to terminate the stream and close the broadcast.
 
-Place the following files in the `/models` subdirectory relative to your scripts:
+---
 
-* `yolo11n.onnx` (YOLOv4 ONNX weights)
+# 🛠️ Setup & Installation
 
-### Logic:
+### 1. Model Setup
 
-When **Motion** triggers an event, the `detect.py` script:
+Place the `yolo11n.onnx` file in the `/models` subdirectory.
 
-1. Clears the stale RTSP buffer (skipping 15 frames).
-2. Analyzes the live frame using the YOLO model.
-3. If a **human** (ID: 0), **dog** (ID: 16), or **cat** (ID: 15) is detected with greater than 50% confidence, it triggers an alert. If no valid object is detected, the script exits early to save CPU usage.
-
-### AI Dependencies
-
-## 1. Installation Guide (Python)
+### 2. Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
+### 3. Google API Authentication
 
-# 📡 API Integration for Object Detection
-
-The motion detection system has been updated to use a **local API** for object detection, improving accuracy and reducing resource load. The **AI model** (YOLOv4 ONNX) is now loaded **once** on startup and the detection is handled inside the API, reducing redundant processing.
-
-### API Setup:
-
-1. The **API** checks for the presence of human-like objects when motion is detected.
-2. The API is called to verify if **human, dog, or cat** is detected.
-3. Only **human detection** triggers the live stream and sends Discord notifications with the YouTube stream link.
-
-### API Endpoint:
-
-* **GET** `/detect?rtsp_url=<rtsp_url>`: Sends a request to check the RTSP stream for object detection.
+1.  Create a Google API project and enable **YouTube Data API**.
+2.  Place `client_secret.json` in the project directory.
+3.  Run `python3 generate_token.py` to create `token.json`.
 
 ---
 
-## 🧑‍💻 Method 1: Python System (Recommended for Scalability) 🐍
+# 🧑‍💻 Project File Structure
 
-This method uses **centralized configuration** (`config.py`) and **modular Python scripts** (`start_stream.py`, `send_webhook.py`) for easy maintenance and management of multiple cameras.
-
-### Project File Structure
-
-Place the following Python scripts and configuration file in a dedicated directory (e.g., `/PATH/TO/YOUR/SCRIPTS`):
-
-1. **`config.py`**: Centralized configuration for all camera-specific URLs, keys, and webhook addresses.
-2. **`start_stream.py`**: Starts the YouTube live stream using **FFmpeg** and sends a webhook notification.
-3. **`stop_stream.py`**: Stops the live stream and sends a webhook.
-4. **`send_webhook.py`**: Reusable function to send motion-triggered alerts to Discord.
-5. **`api.py`**: The API that loads the YOLOv4 ONNX model and handles incoming requests to check for objects in the RTSP stream. This API ensures that the model is loaded into memory once, avoiding redundant loads on each call.
-6. **`generate_token.py`**: This script is used to authenticate with the YouTube API by generating a `token.json` file. The token allows the system to interact with YouTube, including starting and stopping streams. The token may expire, and this script allows you to regenerate it when needed.
-7. **`redis_utils.py`**: Utility script for interacting with Redis. It helps track which cameras are currently running, allowing the system to start and stop them based on motion detection events. This ensures that only the necessary streams are active.
-8. **`youtube.py`**: Contains the logic for interacting with the YouTube API, including starting a live stream, saving videos to a playlist, stopping the stream, and managing all other aspects of YouTube streaming and broadcasting.
-9. **`utils.py`**: Provides helper functions for formatting and sending messages. This script includes functions for adding timestamps and other relevant information to the notifications that are sent via Discord.
-
-
-### Permissions (MANDATORY)
-
-Since **Motion** runs as the **root** user via `systemd`, you must ensure the following are configured correctly:
-
-| **Target**           | **Requirement**                       | **Command**                                |
-| :------------------- | :------------------------------------ | :----------------------------------------- |
-| **Scripts** (`*.py`) | **Execute** permission & Shebang line | `chmod +x *.py`                            |
-| **Log Directory**    | Directory must exist                  | `sudo mkdir -p /PATH/TO/YOUR/SCRIPTS/logs` |
-
-Make sure the **first line** of `start_stream.py`, `stop_stream.py`, and `send_webhook.py` is:
-
-```python
-#!/usr/bin/env python3
-```
-
-## 2. Configuration (`config.py`)
-
-The configuration file includes camera-specific settings like stream URLs, YouTube keys, and Discord webhook URLs. For example:
-
-```python
-# config.py
-
-LOG_DIR = "/PATH/TO/YOUR/SCRIPTS/logs"
-FFMPEG_BIN = "/usr/bin/ffmpeg"
-
-CAMERA_CONFIG = {
-    "Kitchen": {
-        "STREAM_URL": "rtsp://...",
-        "YOUTUBE_KEY": "1234-1234-1234-1234-1234",
-        "CHAT_INFO": "Kitchen Live Stream",
-        "WEBHOOK_URL": "https://discord.com/api/webhooks/xxxx",
-        "MESSAGE": "🚨 Motion Alert: Kitchen Camera at"
-    },
-    # Add other cameras...
-}
-```
-
-## 3. Motion Configuration Integration (Python)
-
-Update the Motion configuration for each camera (e.g., `/etc/motion/ipcamera-kitchen.conf`) to trigger the appropriate Python scripts when motion is detected.
-
-```conf
-############################################################
-# Event Handling - Python Scripts
-############################################################
-
-# Start the stream when motion is detected (calls start_stream.py and sends "LIVE" webhook)
-on_event_start /usr/bin/python3 /path/to/your/scripts/start_stream.py Kitchen
-
-# Stop the stream when motion ends
-on_event_end /usr/bin/python3 /path/to/your/scripts/stop_stream.py Kitchen
-```
-
-## 📝 Notes
-
-* **Tuning:** Adjust `threshold` and `minimum_motion_frames` in Motion’s config file for correct motion sensitivity.
-* **Testing:** Use `emulate_motion on` in your camera config for testing automation and verifying that triggers are firing correctly.
+*   **`config.py`**: Centralized configuration for all camera URLs, keys, and settings.
+*   **`motion_detector.py`**: The main monitor that uses OpenCV for movement detection.
+*   **`api.py`**: The Flask/Gunicorn-based API that keeps the YOLO model resident in memory.
+*   **`start-stream.py`**: Initiates streaming and notifications after AI verification.
+*   **`stop-stream.py`**: Gracefully terminates the FFmpeg process and YouTube broadcast.
+*   **`detect.py`**: Client-side logic for calling the AI API.
+*   **`youtube.py`**: Integration with YouTube Data API for broadcast management.
+*   **`redis_utils.py`**: Persistence layer for tracking active stream states.
 
 ---
 
-# 🧩 Running the System (Both Methods)
+# ⚙️ Running the System (Systemd Services)
 
-1. **Start or restart Motion** to apply the new configuration:
+To run the system reliably in the background:
 
-   ```bash
-   sudo systemctl enable motion
-   sudo systemctl restart motion
-   sudo systemctl status motion
-   ```
-
-## 🔑 Google API Authentication (`token.json`)
-
-To interact with YouTube's API for live streaming, authenticate with Google and generate the `token.json` file. Follow these steps:
-
-1. **Create a Google API project** and enable the **YouTube Data API**.
-
-2. **Download OAuth 2.0 credentials** and place the `client_secret.json` file in your project directory.
-
-3. **Generate the `token.json` file** by running the authentication script:
-
-   ```bash
-   python3 generate_token.py
-   ```
-
-4. **Use `token.json` for Authentication** in the Python scripts (`start_stream.py`, `stop_stream.py`) to authenticate and interact with YouTube’s API.
-
-
-### **Updated AI Integration:**
-
-The object detection part of the system is now handled via a **local API** that checks if the detected motion corresponds to a **human, cat, or dog** using YOLOv4 (`yolo11n.onnx`). This reduces CPU usage and improves the accuracy of alerts. The **AI API** is only called when motion is detected, and only if a **human** is confirmed by the AI does the system proceed to send alerts and start streaming.
-
----
-
-## 🛠️ **Setting up the API as a Service (with Gunicorn)**
-
-To run the object detection API in a persistent and reliable way, we use **Gunicorn** to serve the API and **systemd** to manage it as a service.
-
-### API Service Setup:
-
-1. **Create a systemd service file** for your API:
+### 1. Object Detection API Service
+Create `/etc/systemd/system/ip-camera-api.service`:
 
 ```ini
 [Unit]
-Description=Gunicorn instance for ip-camera
+Description=Gunicorn instance for ip-camera detection API
 After=network.target
 
 [Service]
 User=<YOUR_USER>
 Group=www-data
 WorkingDirectory=<YOUR_PROJECT_DIRECTORY>
-# Activate virtual environment and start Gunicorn
-ExecStart=/bin/bash -c 'source <YOUR_PROJECT_DIRECTORY>/venv/bin/activate && exec gunicorn --workers 1 --bind 127.0.0.1:8001 api:app'
+ExecStart=/bin/bash -c 'source venv/bin/activate && exec gunicorn --workers 1 --bind 127.0.0.1:8001 api:app'
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-* Replace `<YOUR_USER>` with the user under which you want to run the service.
-* Replace `<YOUR_PROJECT_DIRECTORY>` with the path to your project directory.
+### 2. Motion Detection Automate System Service
+Create `/etc/systemd/system/motion-detection.service`:
 
-2. **Place the service file** in `/etc/systemd/system/` with a name like `ip-camera-api.service`.
+```ini
+[Unit]
+Description=Motion Detection Automate System
+After=network.target
 
-3. **Enable and start the service**:
+[Service]
+User=<YOUR_USER>
+WorkingDirectory=<YOUR_PROJECT_DIRECTORY>
+ExecStart=<YOUR_PROJECT_DIRECTORY>/venv/bin/python3 <YOUR_PROJECT_DIRECTORY>/motion_detector.py
+Restart=always
+RestartSec=3
+Environment="PATH=<YOUR_PROJECT_DIRECTORY>/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-```bash
-sudo systemctl enable ip-camera-api.service
-sudo systemctl start ip-camera-api.service
+[Install]
+WantedBy=multi-user.target
 ```
 
-4. **Check service status**:
+### 3. Activation
 
 ```bash
-sudo systemctl status ip-camera-api.service
+sudo systemctl daemon-reload
+sudo systemctl enable ip-camera-api.service motion-detection.service
+sudo systemctl start ip-camera-api.service motion-detection.service
 ```
-
-
-Sure! Here's the **Version History** section styled in the format suitable for a `README.md` file, with the latest changes at the top:
 
 ---
 
 ## 📅 Version History
 
-### **v1.7.0 Latest** – Enhance motion detection with YOLOv4 ONNX and object verification API
-
+### **v1.8.0 Latest** – Removed Motion Daemon, added Custom Python Soft-Trigger
 * **Features**:
-
-  * Replaced previous detection model with **YOLOv4 ONNX** (`yolo11n.onnx`) for more accurate object detection.
-  * Integrated a new **local API** to handle object detection and filter motion events based on AI results (human, dog, cat).
-  * Streamlined detection process to reduce CPU usage by calling the AI model only when motion is detected.
-  * Added a confidence threshold of **50%** to ensure that only valid detections trigger actions (e.g., YouTube streaming, Discord alerts).
-
-**Key Changes**:
-
-* Replaced `detect.py` logic to integrate YOLOv4 ONNX for object detection via an API.
-* Refactored object detection flow to improve accuracy and reduce false alarms (especially from wind, shadows, or cars).
-* Updated Motion configuration to call the new API, ensuring AI checks before triggering alerts.
-* Enhanced webhook notification to include the detected object type and confidence level before initiating the stream.
-* Optimized CPU performance by skipping stale frames and minimizing redundant processing.
+  * Completely removed dependency on the `motion` daemon.
+  * Introduced `motion_detector.py` for efficient movement detection.
+  * Optimized AI verification: The model is now kept resident in memory via `api.py` to prevent reload delays.
+  * Integrated systemd services for both the detector and the AI API.
 
 ---
 
-### **[v1.6.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/753fb3cbf156b9a7f50af3309057fc197f8d21e8)** – Migrate object detection to MobileNet V3 Large
-
+### **v1.7.0** – Enhance motion detection with YOLOv4 ONNX and object verification API
 * **Features**:
-
-  * Upgraded the primary detection model to **SSD-MobileNetV3-Large** for improved accuracy and reduced false positives compared to the previous version.
-  * Preserved the original MobileNet V2 implementation for legacy compatibility and testing purposes.
-
-**Key Changes**:
-
-* Replaced MobileNet V2 with **SSD-MobileNetV3-Large** in `detect.py`.
-* Renamed the previous V2 detection script to `detect_v2.py`.
+  * Replaced previous detection model with **YOLOv4 ONNX** (`yolo11n.onnx`).
+  * Integrated local API to handle object detection.
+  * Added a confidence threshold of **50%**.
 
 ---
 
-### **[v1.5.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/7344aed9e06dbc418f4f67e27df90a4a3be01dc1)** – Added AI object detection
-
+### **[v1.6.0]** – Migrate object detection to MobileNet V3 Large
 * **Features**:
-
-  * Integrated **MobileNet-SSD version 2** to verify **humans and animals** before starting the broadcast, reducing false detections from environmental motion.
-
-**Key Changes**:
-
-* Added `is_target_present` check to filter motion events before initiating streaming.
+  * Upgraded detection model for improved accuracy.
 
 ---
 
-### **[v1.4.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/5bf5c6efccb731db457f1b98d0373f675d730154)** – Integrate YouTube broadcast with camera stream and automate playlist management
-
+### **[v1.5.0]** – Added AI object detection
 * **Features**:
-
-  * Integrated camera stream with **YouTube live broadcasting**.
-  * After starting the stream, the system automatically creates a YouTube broadcast, transitions it to live status, and adds the stream to a specified playlist.
-
-**Key Changes**:
-
-* Added logic to create a scheduled YouTube broadcast for the camera stream.
-* Implemented automatic transition of the broadcast to live status once the stream starts.
-* Added ability to add the live stream to a specified playlist.
-* Streamlined the process for starting a YouTube live broadcast directly from the camera stream.
+  * Integrated MobileNet-SSD version 2 for verification.
 
 ---
 
-### **[v1.3.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/75f996df9958ca5851b45ce35d0b8ae7d46020af)** – Implement automated YouTube live stream creation, scheduling, and playlist integration
-
+### **[v1.4.0]** – Integrate YouTube broadcast with camera stream
 * **Features**:
-
-  * Added functionality to automate the creation, scheduling, and management of YouTube live broadcasts.
-  * Included a feature to automatically add live broadcasts to a specified playlist after they go live.
-
-**Key Changes**:
-
-* Added `create_stream.py` to handle the creation of live broadcasts on YouTube via the Google API.
-* Integrated stream scheduling functionality, allowing broadcasts to be scheduled in advance with specific stream keys.
-* Implemented automated transition to live status for broadcasts when the stream is active.
-* Added logic to add live broadcasts to playlists upon going live.
+  * Automated creation and live-transition of YouTube broadcasts.
 
 ---
 
-### **[v1.2.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/77a5239e9b30eb6ba872b2c05875487f24e4f934)** – Major refactor of event triggering logic for scalability
-
+### **[v1.3.0]** – Implement automated YouTube live stream management
 * **Features**:
-
-  * Migrated core logic (FFmpeg process management, stream start/stop, Discord notification) from fragmented Bash scripts to a modular Python system (`start_stream.py`, `stop_stream.py`, `send_webhook.py`).
-  * Introduced `config.py` to centralize all camera settings (RTSP URLs, YouTube keys, Discord webhooks).
-
-**Key Changes**:
-
-* Simplified the process for handling multiple cameras by centralizing configurations in a single file.
-* Improved maintainability and debugging by using Python scripts instead of Bash.
-* Updated the README to document the new Python method alongside legacy Bash implementation.
-
-**Impact**:
-
-* Reduces configuration duplication and simplifies debugging.
-* Enables easier scaling and better management of camera streams.
+  * Added scheduling and automatic playlist integration.
 
 ---
 
-### **[v1.1.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/71e532ef273aac2603cb364e972c57bea18a61f7)** – Added basic motion detection and alerting
-
+### **[v1.2.0]** – Major refactor of event triggering logic
 * **Features**:
+  * Migrated from Bash scripts to modular Python scripts and `config.py`.
 
-  * Basic motion detection using `Motion` daemon and IP cameras.
-  * No AI filtering or object detection.
-  * Sends basic alerts to Discord when motion is detected.
-  * One camera stream per one YouTube account.
-  * Full Bash scripting for configuration.
+---
+
+### **[v1.1.0]** – Added basic motion detection and alerting
+* **Features**:
+  * Initial implementation with basic alerts and no AI filtering.
 
 ---

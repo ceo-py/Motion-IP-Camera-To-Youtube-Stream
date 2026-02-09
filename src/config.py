@@ -25,7 +25,7 @@ YOUTUBE = {
     "API_SERVICE_NAME": 'youtube',
     "API_VERSION": 'v3',
     "TOKEN_FILE": 'token.json',
-    "PLAYLIST_ID": 'PLV0e0d_ZUComWaSZdRi2wLH9MSYujkZvz',
+    "PLAYLIST_ID": 'ID PLAYLIST STR',
     "VIDEO_URL": 'https://www.youtube.com/watch?v=',
 }
 
@@ -63,3 +63,16 @@ TARGET_NAMES = {
 }
 TASK = "detect"
 DETECT_ENDPOINT = "http://127.0.0.1:8001/detect?rtsp_url="
+
+# MOTION DETECTION CONFIGURATION
+# Optimized for 2-core CPU & Window recording
+MOTION_DETECTION = {
+    "THRESHOLD": 250,           # Catch smaller objects (like cats in distance)
+    "SENSITIVITY": 15,          # Pick up lower contrast through glass
+    "DOWNSCALE_WIDTH": 320,
+    "FORCE_RESIZE": False,
+    "CHECK_INTERVAL": 0.8,
+    "MIN_MOTION_FRAMES": 3,     # Trigger slightly faster
+    "COOLDOWN_PERIOD": 15,
+    "LEARNING_RATE": 0.05,
+}
