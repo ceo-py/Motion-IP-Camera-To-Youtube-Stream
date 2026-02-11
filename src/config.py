@@ -63,6 +63,8 @@ TARGET_NAMES = {
 }
 TASK = "detect"
 DETECT_ENDPOINT = "http://127.0.0.1:8001/detect?rtsp_url="
+HLS_ROOT_RAM_DISK="http://localhost:8002/streams"
+INDEX_M3U8="index.m3u8"
 
 # MOTION DETECTION CONFIGURATION
 # Optimized for 2-core CPU & Window recording

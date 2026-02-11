@@ -8,7 +8,7 @@ from detect import is_target_present
 # --- Import Configuration ---
 try:
     # This imports CAMERA_CONFIG and FFMPEG_BIN
-    from config import CAMERA_CONFIG, FFMPEG_BIN
+    from config import CAMERA_CONFIG, FFMPEG_BIN, INDEX_M3U8, HLS_ROOT_RAM_DISK
 except ImportError:
     print_message("Error: Could not find 'config.py'. Ensure it's in the same directory.")
     sys.exit(1)
@@ -33,7 +33,7 @@ YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
 
 target_found = is_target_present(STREAM_URL)
 if not target_found:
-    print_message("No Human/Animal Detected!!")
+    print_message(f"No Human/Animal Detected!! {CAMERA_NAME}")
     sys.exit(0)
 
 # --- PID Check Logic ---
@@ -59,8 +59,7 @@ if is_ffmpeg_streaming():
 # --- Start FFmpeg Stream ---
 ffmpeg_command = [
     FFMPEG_BIN,
-    '-rtsp_transport', 'tcp',
-    '-i', STREAM_URL,
+    '-i', f'{HLS_ROOT_RAM_DISK}/{CAMERA_NAME}/{INDEX_M3U8}',
     '-c', 'copy',  # Highly efficient, no re-encoding
     '-f', 'flv',
     f"rtmps://a.rtmp.youtube.com/live2/{YOUTUBE_KEY}"
