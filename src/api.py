@@ -3,8 +3,8 @@ import sys
 import cv2
 from ultralytics import YOLO
 from flask import Flask, jsonify, request
-from utils import print_message
-from config import MODEL, TARGET_NAMES, TARGET_ACTIVATION, DETECT_CONF, IMAGE_SIZE, DEVICE_TYPE, TASK
+from utils import print_message, find_camera_key
+from config import MODEL, TARGET_NAMES, TARGET_ACTIVATION, DETECT_CONF, IMAGE_SIZE, DEVICE_TYPE, TASK, CAMERA_CONFIG
 
 # --- Model Path ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -45,13 +45,14 @@ def is_target_present(rtsp_url: str) -> list | None:
     results = model.predict(
         source=frame,
         device=DEVICE_TYPE,
-        classes=TARGET_NAMES.keys(),
+        classes=list(TARGET_NAMES.keys()),
         conf=DETECT_CONF,
         imgsz=IMAGE_SIZE,
         verbose=False
     )
 
     target_detections = []
+    camera_name = find_camera_key(rtsp_url, CAMERA_CONFIG)
     # 3. Process results silently
     for result in results:
         if len(result.boxes) == 0:
@@ -62,7 +63,7 @@ def is_target_present(rtsp_url: str) -> list | None:
             cls_id = int(box.cls)
             label = TARGET_NAMES.get(cls_id, "Unknown")
             detect_message = f"{label} ({conf:.2f})"
-            print_message(f"Detected: {detect_message}")
+            print_message(f"[{camera_name}] Detected: {detect_message}")
             if cls_id not in TARGET_ACTIVATION:
                 continue
 

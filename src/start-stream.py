@@ -22,7 +22,7 @@ CAMERA_NAME = sys.argv[1]
 
 # --- Configuration & File Setup ---
 if CAMERA_NAME not in CAMERA_CONFIG:
-    print_message(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
+    print_message(f"[{CAMERA_NAME}] Error: Camera not defined in config.py.")
     sys.exit(1)
 
 # Get the specific config for the camera
@@ -33,7 +33,7 @@ YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
 
 target_found = is_target_present(STREAM_URL)
 if not target_found:
-    print_message(f"No Human/Animal Detected!! {CAMERA_NAME}")
+    print_message(f"[{CAMERA_NAME}] No Human/Animal Detected!!")
     sys.exit(0)
 
 # --- PID Check Logic ---
@@ -45,11 +45,11 @@ def is_ffmpeg_streaming():
         )
         for line in result.stdout.splitlines():
             if 'ffmpeg' in line and YOUTUBE_KEY in line:
-                print_message(f"Stream already running for {CAMERA_NAME} (process found).")
+                print_message(f"[{CAMERA_NAME}] Stream already running (process found).")
                 return True
         return False
     except Exception as e:
-        print_message(f"Error checking ffmpeg process: {e}")
+        print_message(f"[{CAMERA_NAME}] Error checking ffmpeg process: {e}")
         return False
 
 # Check if the stream is already running
@@ -75,12 +75,10 @@ try:
     )
     pid = process.pid
     # Print success message after starting the stream
-    print_message(f"Successfully started YouTube stream for {CAMERA_NAME} (PID: {pid}).")
-    # Print success message after starting the stream
-    print_message(f"Stream is using YouTube key: {YOUTUBE_KEY}")
-
+    print_message(f"[{CAMERA_NAME}] Successfully started YouTube stream (PID: {pid}).")
+    
 except Exception as e:
-    print_message(f"FATAL ERROR starting stream: {e}")
+    print_message(f"[{CAMERA_NAME}] FATAL ERROR starting stream: {e}")
     sys.exit(1)
 
 

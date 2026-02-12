@@ -28,18 +28,18 @@ CAMERA_NAME = sys.argv[1]
 
 # --- Configuration & File Setup ---
 if CAMERA_NAME not in CAMERA_CONFIG:
-    print_message(f"Error: Camera '{CAMERA_NAME}' not defined in config.py.")
+    print_message(f"[{CAMERA_NAME}] Error: Camera not defined in config.py.")
     sys.exit(1)
 
 # Get the specific config for the camera
 CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
 YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
-    
+
 
 def is_ffmpeg_streaming(pid: int) -> None:
     try:
         # 1. Attempt Graceful Stop (SIGTERM)
-        print_message(f"Attempting to gracefully stop FFmpeg for {CAMERA_NAME} (PID: {pid})")
+        print_message(f"[{CAMERA_NAME}] Attempting to gracefully stop FFmpeg (PID: {pid})")
         os.kill(pid, signal.SIGTERM)
         time.sleep(3)
 
@@ -48,16 +48,16 @@ def is_ffmpeg_streaming(pid: int) -> None:
             os.kill(pid, 0)
 
             # If still alive, Force Kill (SIGKILL)
-            print_message(f"Graceful stop failed. Force killing FFmpeg (PID: {pid})")
+            print_message(f"[{CAMERA_NAME}] Graceful stop failed. Force killing FFmpeg (PID: {pid})")
             os.kill(pid, signal.SIGKILL)
 
         except ProcessLookupError:
-            print_message(f"Successfully stopped FFmpeg for {CAMERA_NAME} (PID: {pid})")
+            print_message(f"[{CAMERA_NAME}] Successfully stopped FFmpeg (PID: {pid})")
             go_end_stream(CAMERA_NAME)
 
 
     except Exception as e:
-        print_message(f"Error while managing PID: {e}")
+        print_message(f"[{CAMERA_NAME}] Error while managing PID: {e}")
 
 
 def stop_ffmpeg_stream():
@@ -73,8 +73,8 @@ def stop_ffmpeg_stream():
                 pid = int(line.split()[1])
                 is_ffmpeg_streaming(pid)
                 return
-        print_message(f"No active stream is found for {CAMERA_NAME}.")
+        print_message(f"[{CAMERA_NAME}] No active stream is found.")
     except Exception as e:
-        print(f"Error checking ffmpeg process: {e}")
+        print(f"[{CAMERA_NAME}] Error checking ffmpeg process: {e}")
 
 stop_ffmpeg_stream()
