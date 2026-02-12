@@ -1,16 +1,13 @@
 import cv2
 import time
-import subprocess
-import os
-import sys
 from config import CAMERA_CONFIG, MOTION_DETECTION
 from utils import print_message
 from concurrent.futures import ThreadPoolExecutor
+from detect import is_target_present
+from start_stream import start_ffmpeg_stream
+from stop_stream import stop_ffmpeg_stream
 
-# Current working directory
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-START_STREAM_SCRIPT = os.path.join(BASE_DIR, "start-stream.py")
-STOP_STREAM_SCRIPT = os.path.join(BASE_DIR, "stop-stream.py")
+
 
 class MotionDetector:
     def __init__(self, camera_name, stream_url):
@@ -80,33 +77,40 @@ class MotionDetector:
         motion_detected = self.process_frame(frame)
 
         if motion_detected:
-            self.motion_counter += 1
-            self.last_motion_time = time.time()
-            print_message(f"[{self.camera_name}] Motion detected! Counter: {self.motion_counter}")
-
-            if self.motion_counter >= MOTION_DETECTION.get("MIN_MOTION_FRAMES", 4):
-                print_message(f"[{self.camera_name}] Threshold reached. Triggering start-stream.py...")
-                self.start_stream()
-                self.was_moving = True
-        else:
+            self.motion_counter +=1
+        
+        elif not motion_detected and self.motion_counter != 0:
             self.motion_counter = 0
-            # If we were previously moving and now it's quiet for COOLDOWN, call stop
-            if self.was_moving and (time.time() - self.last_motion_time > MOTION_DETECTION.get("COOLDOWN_PERIOD", 15)):
-                print_message(f"[{self.camera_name}] No motion for COOLDOWN. Stopping stream...")
-                self.stop_stream()
+
+
+        if not self.was_moving and self.motion_counter > MOTION_DETECTION.get("MIN_MOTION_FRAMES", 4):
+            print_message(f"[{self.camera_name}] Threshold reached. Triggering AI detection...")
+            self.stream_process()
+
+        elif self.was_moving and (time.time() - self.stream_start_time) < 60:
+            return 
+
+        elif self.was_moving and (time.time() - self.last_motion_time > MOTION_DETECTION.get("COOLDOWN_PERIOD", 15)):
+            self.stream_process()
+
+
+
+    def stream_process(self):
+        self.last_motion_time = time.time()
+        target_found = is_target_present(self.stream_url)
+        
+        if not target_found:
+            print_message(f"[{self.camera_name}] No Human/Animal Detected!!")
+
+            if self.was_moving:
+                stop_ffmpeg_stream(self.camera_name)
                 self.was_moving = False
 
-    def start_stream(self):
-        try:
-            subprocess.Popen([sys.executable, START_STREAM_SCRIPT, self.camera_name])
-        except Exception as e:
-            print_message(f"[{self.camera_name}] Error starting stream : {e}")
+        elif target_found and not self.was_moving:
+            start_ffmpeg_stream(self.camera_name, target_found)
+            self.was_moving = True
 
-    def stop_stream(self):
-        try:
-            subprocess.run([sys.executable, STOP_STREAM_SCRIPT, self.camera_name])
-        except Exception as e:
-            print_message(f"[{self.camera_name}] Error stopping stream : {e}")
+
 
 def main():
     detectors = []

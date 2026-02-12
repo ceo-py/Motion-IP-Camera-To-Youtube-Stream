@@ -75,6 +75,6 @@ MOTION_DETECTION = {
     "FORCE_RESIZE": False,
     "CHECK_INTERVAL": 0.8,
     "MIN_MOTION_FRAMES": 3,     # Trigger slightly faster
-    "COOLDOWN_PERIOD": 15,
+    "COOLDOWN_PERIOD": 60,
     "LEARNING_RATE": 0.05,
 }

@@ -1,42 +1,15 @@
 # stop_stream.py
 import os
-import sys
 import signal
 import time
 from utils import print_message
 from youtube import go_end_stream
+from config import CAMERA_CONFIG
 import subprocess
 
 
 
-
-# --- Import Configuration ---
-try:
-    # This imports CAMERA_CONFIG and FFMPEG_BIN
-    from config import CAMERA_CONFIG
-except ImportError:
-    print_message("Error: Could not find 'config.py'. Ensure it's in the same directory.")
-    sys.exit(1)
-
-# Get camera name from command line argument
-if len(sys.argv) < 2:
-    print_message("Usage: python stop_stream.py <CAMERA_NAME>")
-    sys.exit(1)
-
-
-CAMERA_NAME = sys.argv[1]
-
-# --- Configuration & File Setup ---
-if CAMERA_NAME not in CAMERA_CONFIG:
-    print_message(f"[{CAMERA_NAME}] Error: Camera not defined in config.py.")
-    sys.exit(1)
-
-# Get the specific config for the camera
-CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
-YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
-
-
-def is_ffmpeg_streaming(pid: int) -> None:
+def is_ffmpeg_streaming(CAMERA_NAME:str, pid: int) -> None:
     try:
         # 1. Attempt Graceful Stop (SIGTERM)
         print_message(f"[{CAMERA_NAME}] Attempting to gracefully stop FFmpeg (PID: {pid})")
@@ -60,7 +33,10 @@ def is_ffmpeg_streaming(pid: int) -> None:
         print_message(f"[{CAMERA_NAME}] Error while managing PID: {e}")
 
 
-def stop_ffmpeg_stream():
+def stop_ffmpeg_stream(CAMERA_NAME: str) -> None:
+    CAM_CONFIG = CAMERA_CONFIG[CAMERA_NAME]
+    YOUTUBE_KEY = CAM_CONFIG["YOUTUBE_KEY"]
+
     """Check if any ffmpeg process is running with the specified stream URL."""
     try:
         # Run ps to check for ffmpeg processes
@@ -71,10 +47,9 @@ def stop_ffmpeg_stream():
         for line in result.stdout.splitlines():
             if 'ffmpeg' in line and YOUTUBE_KEY in line:
                 pid = int(line.split()[1])
-                is_ffmpeg_streaming(pid)
+                is_ffmpeg_streaming(CAMERA_NAME, pid)
                 return
+            
         print_message(f"[{CAMERA_NAME}] No active stream is found.")
     except Exception as e:
         print(f"[{CAMERA_NAME}] Error checking ffmpeg process: {e}")
-
-stop_ffmpeg_stream()
