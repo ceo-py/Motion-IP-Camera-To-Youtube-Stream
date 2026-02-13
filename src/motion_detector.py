@@ -78,7 +78,7 @@ class MotionDetector:
 
         if motion_detected:
             self.motion_counter +=1
-        
+
         elif not motion_detected and self.motion_counter != 0:
             self.motion_counter = 0
 
@@ -87,8 +87,8 @@ class MotionDetector:
             print_message(f"[{self.camera_name}] Threshold reached. Triggering AI detection...")
             self.stream_process()
 
-        elif self.was_moving and (time.time() - self.stream_start_time) < 60:
-            return 
+        elif self.was_moving and (time.time() - self.last_motion_time) < 60:
+            return
 
         elif self.was_moving and (time.time() - self.last_motion_time > MOTION_DETECTION.get("COOLDOWN_PERIOD", 15)):
             self.stream_process()
@@ -98,7 +98,7 @@ class MotionDetector:
     def stream_process(self):
         self.last_motion_time = time.time()
         target_found = is_target_present(self.stream_url)
-        
+
         if not target_found:
             print_message(f"[{self.camera_name}] No Human/Animal Detected!!")
 
@@ -108,6 +108,7 @@ class MotionDetector:
 
         elif target_found and not self.was_moving:
             start_ffmpeg_stream(self.camera_name, target_found)
+            print_message(f"[{self.camera_name}] AI Detected {target_found}!!")
             self.was_moving = True
 
 
