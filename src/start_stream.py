@@ -35,8 +35,10 @@ def start_ffmpeg_stream(CAMERA_NAME, target_found):
 
     ffmpeg_command = [
         FFMPEG_BIN,
+        '-re',                        # THROTTLE
+        '-live_start_index', '-30',    # START POINT: 30 segments from the end
         '-i', f'{HLS_ROOT_RAM_DISK}/{CAMERA_NAME}/{INDEX_M3U8}',
-        '-c', 'copy',  # Highly efficient, no re-encoding
+        '-c', 'copy',
         '-f', 'flv',
         f"rtmps://a.rtmp.youtube.com/live2/{YOUTUBE_KEY}"
     ]

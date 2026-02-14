@@ -26,7 +26,7 @@ def is_ffmpeg_streaming(CAMERA_NAME:str, pid: int) -> None:
 
         except ProcessLookupError:
             print_message(f"[{CAMERA_NAME}] Successfully stopped FFmpeg (PID: {pid})")
-            go_end_stream(CAMERA_NAME)
+        go_end_stream(CAMERA_NAME)
 
 
     except Exception as e:
