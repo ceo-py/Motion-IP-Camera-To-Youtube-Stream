@@ -165,7 +165,7 @@ def bind_stream_to_broadcast(youtube: build, broadcast_id: str, stream_id: str) 
 
 def go_live(youtube: build, broadcast_id: str, camera: str) -> None:
     """Transition a scheduled broadcast to live with retry logic."""
-    retries = 3
+    retries = 5
     for attempt in range(1, retries + 1):
         try:
             # Attempt to transition the broadcast to live
