@@ -27,6 +27,7 @@ YOUTUBE = {
     "TOKEN_FILE": 'token.json',
     "PLAYLIST_ID": 'ID PLAYLIST STR',
     "VIDEO_URL": 'https://www.youtube.com/watch?v=',
+    "THUMBNAIL_PATH":''
 }
 
 REDIS = {
@@ -38,7 +39,7 @@ LOG_DIR = "PATH TO LOGS/logs"
 FFMPEG_BIN = "/usr/bin/ffmpeg"
 
 # API CONFIGURATION
-MODEL = "yolo26x.onnx"
+MODEL = "yolo26s_openvino_model"
 TARGET_ACTIVATION = [0, 14, 15, 16]
 DETECT_CONF = 0.50
 IMAGE_SIZE = 640

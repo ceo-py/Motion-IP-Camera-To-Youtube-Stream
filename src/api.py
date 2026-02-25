@@ -1,10 +1,9 @@
 import os
 import sys
 import cv2
-import datetime
 from ultralytics import YOLO
 from flask import Flask, jsonify, request
-from utils import print_message, find_camera_key
+from utils import print_message, find_camera_key, save_picture
 from config import MODEL, TARGET_NAMES, TARGET_ACTIVATION, DETECT_CONF, IMAGE_SIZE, DEVICE_TYPE, TASK, CAMERA_CONFIG
 
 # --- Model Path ---
@@ -22,13 +21,6 @@ except Exception as e:
 
 # Create Flask app
 app = Flask(__name__)
-
-def save_picture(frame, camera_name):
-    # Save image when target detected
-    os.makedirs("./images", exist_ok=True)
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    image_path = os.path.join("./images", f"{camera_name}-{timestamp}.png")
-    cv2.imwrite(image_path, frame)
 
 
 def is_target_present(rtsp_url: str) -> list | None:
@@ -75,7 +67,7 @@ def is_target_present(rtsp_url: str) -> list | None:
             if cls_id not in TARGET_ACTIVATION:
                 continue
 
-            save_picture(frame, camera_name)
+            save_picture(cv2, frame, camera_name)
             target_detections.append(detect_message)
 
     return target_detections if target_detections else None

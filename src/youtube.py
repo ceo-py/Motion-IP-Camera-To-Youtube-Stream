@@ -1,14 +1,14 @@
 from generate_token import get_authenticated_service
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from utils import print_message
+from utils import print_message, find_file_by_name, delete_file
 from redis_utils import save_broadcast_id_to_redis, get_broadcast_id_from_redis
 from config import YOUTUBE
 import datetime
 import time
 
-PLAYLIST_ID = YOUTUBE["PLAYLIST_ID"]
-VIDEO_URL = YOUTUBE["VIDEO_URL"]
+PLAYLIST_ID = YOUTUBE.get("PLAYLIST_ID")
+VIDEO_URL = YOUTUBE.get("VIDEO_URL")
 
 
 def get_playlist_id(youtube_service: build, playlist_name: str) -> str | None:
@@ -163,6 +163,49 @@ def bind_stream_to_broadcast(youtube: build, broadcast_id: str, stream_id: str) 
     return response
 
 
+def set_thumbnail(youtube, video_id, camera):
+    thumbnail_path = find_file_by_name(camera)
+
+    if not thumbnail_path:
+        return
+
+    with open(thumbnail_path, 'rb') as f:
+        thumbnail_data = f.read()
+    
+    youtube.thumbnails().set(
+        videoId=video_id,
+        media_body=thumbnail_data
+    ).execute()
+    delete_file(thumbnail_path)
+
+
+def get_processing_videos(youtube: build) -> None:
+    """Retrieve videos that are still processing or are not fully processed yet."""
+
+    try:
+        # Get the list of videos from the authenticated user's channel
+        # You can set 'mine=True' to get videos uploaded by the authenticated user
+        videos = youtube.videos().list(
+            part="snippet,status",
+            mine=True  # Get videos uploaded by the authenticated user
+        ).execute()
+
+        # Loop through the list of videos
+        for video in videos.get("items", []):
+            title = video["snippet"]["title"]
+            video_id = video["id"]
+            status = video["status"]
+
+            # Check if the video is in the "processing" state
+            if status["uploadStatus"] == "processing":
+                print_message(f"Video '{title}' is still processing (ID: {video_id}).")
+            else:
+                print_message(f"Video '{title}' is in status: {status['uploadStatus']} (ID: {video_id}).")
+
+    except Exception as e:
+        print_message(f"Error retrieving videos: {e}")
+
+
 def go_live(youtube: build, broadcast_id: str, camera: str) -> None:
     """Transition a scheduled broadcast to live with retry logic."""
     retries = 5
@@ -179,6 +222,7 @@ def go_live(youtube: build, broadcast_id: str, camera: str) -> None:
             add_video_to_playlist(youtube, broadcast_id, PLAYLIST_ID)
             print_message(f"Broadcast {broadcast_id} is now live!")
             save_broadcast_id_to_redis(camera, broadcast_id)
+            set_thumbnail(youtube, broadcast_id, camera)
             return  # Exit the function on successful execution
 
         except HttpError as e:
@@ -288,4 +332,4 @@ def start_youtube_broadcast_stream(camera: str) -> str:
 
 if __name__ == '__main__':
     youtube = get_authenticated_service()
-    start_youtube_broadcast_stream("Yard")
+    start_youtube_broadcast_stream("Balcony")
