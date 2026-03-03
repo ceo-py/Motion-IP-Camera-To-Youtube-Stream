@@ -8,11 +8,12 @@ No videos or snapshots are saved on the server; all processing occurs in real-ti
 
 ## 🚀 Features
 
-* **Custom Motion Soft-Trigger**: Uses a dedicated Python script (`motion_detector.py`) to monitor RTSP streams for movement, replacing the legacy `motion` daemon.
-* **AI Filtering (YOLOv4 / Ultralytics)**: Uses the **YOLO26x** model (`yolo26x.onnx`) for high-accuracy object detection. It checks if motion is caused by a **human** (default target for alerts), **dog**, or **cat**.
+* **Dual YOLO26 Architecture**: Uses **YOLO26n** (nano) as lightweight front-end for fast motion triggering, **YOLO26x** (large) as back-end for accurate verification.
+* **OpenVINO INT8 Optimization**: Both models exported with OpenVINO INT8 quantization for 2-4x faster CPU inference - optimized for old 2-core CPUs.
+* **Target Classes**: Filters for **person**, **bird**, **cat**, **dog** only (COCO classes 0, 14, 15, 16).
 * **Discord notifications** with camera name, timestamp, and **direct YouTube live links**.
-* **Automatic YouTube live streaming**: Initiated only when a **human** is detected by the AI.
-* **Optimized for Performance**: The AI model is loaded into memory once by a local API, ensuring rapid verification without reloading the model for every trigger.
+* **Automatic YouTube live streaming**: Initiated only when target is detected by the AI.
+* **Efficient Polling**: Checks each camera every 3 seconds with minimal CPU usage.
 
 ---
 
@@ -20,13 +21,11 @@ No videos or snapshots are saved on the server; all processing occurs in real-ti
 
 The system is fully Python-based and operates in a streamlined sequence:
 
-1.  **Detection (`motion_detector.py`)**: Continuously monitors low-resolution RTSP streams for pixel changes. This acts as a "soft trigger" to minimize resource usage.
-2.  **Trigger (`start-stream.py`)**: When significant motion is detected, `motion_detector.py` triggers this script.
-3.  **AI Verification (`detect.py` & `api.py`)**: `start-stream.py` calls the local AI API.
-    *   **Crucial**: `api.py` loads the YOLOv4 model into RAM on startup. Subsequent calls for detection are nearly instantaneous because the model is **already in memory**.
-4.  **Streaming**: If the AI confirms a **human**, an FFmpeg process is started to stream the high-resolution feed to YouTube.
-5.  **Notification**: A Discord webhook is sent with the live YouTube link.
-6.  **Cleanup (`stop-stream.py`)**: After the motion stops and a cooldown period expires, the detector calls this script to terminate the stream and close the broadcast.
+1.  **Front-End Detection (`motion_detector.py`)**: Uses **YOLO26n** at 320p to continuously scan RTSP streams for target objects (person/bird/cat/dog). Runs every 3 seconds per camera.
+2.  **Back-End Verification**: If front-end detects a target, **YOLO26x** at 640p verifies the detection with higher accuracy.
+3.  **Streaming**: If back-end confirms a target, **FFmpeg** starts streaming to YouTube.
+4.  **Notification**: A Discord webhook is sent with the live YouTube link.
+5.  **Cleanup**: After 60 seconds of no detection, the stream stops automatically.
 
 ---
 
@@ -34,10 +33,26 @@ The system is fully Python-based and operates in a streamlined sequence:
 
 ### 1. Model Setup
 
-The system uses the high-performance `yolo26x.onnx` model. Due to its size, you must download it manually:
+The system uses **dual YOLO26 models** with OpenVINO INT8 optimization:
 
-1.  Download the model from the [Ultralytics GitHub Repository](https://github.com/ultralytics/ultralytics).
-2.  Place the `yolo26x.onnx` file in the `/models` subdirectory of your project.
+1.  **Front-End**: `yolo26n_int8_openvino_model` (nano - lightweight, fast)
+2.  **Back-End**: `yolo26x_int8_openvino_model` (large - accurate)
+
+Export your models with OpenVINO INT8 for optimal CPU performance:
+
+```python
+from ultralytics import YOLO
+
+# Front-end model (nano, 320p)
+model = YOLO("yolo26n.pt")
+model.export(format="openvino", int8=True, imgsz=320)
+
+# Back-end model (large, 640p)
+model = YOLO("yolo26x.pt")
+model.export(format="openvino", int8=True, imgsz=640)
+```
+
+Place both exported model folders in the `/models` subdirectory.
 
 ### 2. Dependencies
 
@@ -55,14 +70,13 @@ pip install -r requirements.txt
 
 # 🧑‍💻 Project File Structure
 
-*   **`config.py`**: Centralized configuration for all camera URLs, keys, and settings.
-*   **`motion_detector.py`**: The main monitor that uses OpenCV for movement detection.
-*   **`api.py`**: The Flask/Gunicorn-based API that keeps the YOLO model resident in memory.
-*   **`start-stream.py`**: Initiates streaming and notifications after AI verification.
-*   **`stop-stream.py`**: Gracefully terminates the FFmpeg process and YouTube broadcast.
-*   **`detect.py`**: Client-side logic for calling the AI API.
+*   **`config.py`**: Centralized configuration for all camera URLs, keys, model paths, and settings.
+*   **`motion_detector.py`**: Main monitor with dual YOLO26 model architecture (front-end + back-end).
+*   **`start_stream.py`**: Initiates streaming and notifications after AI verification.
+*   **`stop_stream.py`**: Gracefully terminates the streaming process and YouTube broadcast.
 *   **`youtube.py`**: Integration with YouTube Data API for broadcast management.
-*   **`redis_utils.py`**: Persistence layer for tracking active stream states.
+*   **`utils.py`**: Utility functions for image processing and notifications.
+*   **`webhook.py`**: Discord webhook integration.
 
 ---
 
@@ -70,37 +84,18 @@ pip install -r requirements.txt
 
 To run the system reliably in the background:
 
-### 1. Object Detection API Service
-Create `/etc/systemd/system/ip-camera-api.service`:
-
-```ini
-[Unit]
-Description=Gunicorn instance for ip-camera detection API
-After=network.target
-
-[Service]
-User=<YOUR_USER>
-Group=www-data
-WorkingDirectory=<YOUR_PROJECT_DIRECTORY>
-ExecStart=/bin/bash -c 'source venv/bin/activate && exec gunicorn --workers 1 --bind 127.0.0.1:8001 api:app'
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### 2. Motion Detection Automate System Service
+### Motion Detection Service
 Create `/etc/systemd/system/motion-detection.service`:
 
 ```ini
 [Unit]
-Description=Motion Detection Automate System
+Description=Motion Detection with Dual YOLO26 Models
 After=network.target
 
 [Service]
 User=<YOUR_USER>
 WorkingDirectory=<YOUR_PROJECT_DIRECTORY>
-ExecStart=<YOUR_PROJECT_DIRECTORY>/venv/bin/python3 <YOUR_PROJECT_DIRECTORY>/motion_detector.py
+ExecStart=<YOUR_PROJECT_DIRECTORY>/venv/bin/python3 <YOUR_PROJECT_DIRECTORY>/src/motion_detector.py
 Restart=always
 RestartSec=3
 Environment="PATH=<YOUR_PROJECT_DIRECTORY>/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -109,12 +104,12 @@ Environment="PATH=<YOUR_PROJECT_DIRECTORY>/venv/bin:/usr/local/sbin:/usr/local/b
 WantedBy=multi-user.target
 ```
 
-### 3. Activation
+### Activation
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable ip-camera-api.service motion-detection.service
-sudo systemctl start ip-camera-api.service motion-detection.service
+sudo systemctl enable motion-detection.service
+sudo systemctl start motion-detection.service
 ```
 
 ---
@@ -134,12 +129,12 @@ sudo systemctl start ip-camera-api.service motion-detection.service
 
 ---
 
-### **v1.8.0** – Switched to YOLO26X & Removed Motion Daemon
+### **[v1.8.0](https://github.com/ceo-py/Motion-IP-Camera-To-Youtube-Stream/tree/b6b31a0d69a0dd65ebf936693042a8e82fd3346a)** – Switched to YOLO26X & Removed Motion Daemon
 * **Features**:
   * **Upgraded to YOLO26X**: Replaced `yolo11n` with the larger, more accurate `yolo26x.onnx` model for superior detection.
   * Completely removed dependency on the `motion` daemon in favor of a custom Python soft-trigger.
   * Introduced `motion_detector.py` for efficient movement detection.
-  * Optimized AI verification: The model is now kept resident in memory via `api.py` to prevent reload delays.
+  * Optimized AI verification: Models are loaded once at startup for minimal inference delay.
   * Integrated systemd services for both the detector and the AI API.
 
 ---
