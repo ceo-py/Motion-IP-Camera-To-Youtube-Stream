@@ -1,30 +1,100 @@
 import cv2
 import time
-from config import CAMERA_CONFIG, MOTION_DETECTION
-from utils import print_message
+import os
+from ultralytics import YOLO
 from concurrent.futures import ThreadPoolExecutor
-from detect import is_target_present
+from config import CAMERA_CONFIG, MOTION_DETECTION, FRONT_MODEL, BACK_MODEL, FRONT_DETECT_CONF, BACK_DETECT_CONF, IMAGE_SIZE, TARGET_ACTIVATION, DEVICE_TYPE, TARGET_NAMES
+from utils import print_message, save_picture, draw_detect_objectcv
 from start_stream import start_ffmpeg_stream
 from stop_stream import stop_ffmpeg_stream
 
+# --- CONFIGURATION ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONT_MODEL_PATH = os.path.join(BASE_DIR, "models", FRONT_MODEL)
+BACK_MODEL_PATH = os.path.join(BASE_DIR, "models", BACK_MODEL)
+CHECK_INTERVAL = 3  # Seconds between AI checks per camera
+
+class YOLO26Gatekeeper:
+    """A shared AI engine to prevent loading the model multiple times."""
+    def __init__(self, front_model_path, back_model_path):
+        # Load the OpenVINO model specifically for Intel CPU
+        self.front_model = YOLO(front_model_path, task='detect')
+        self.back_model = YOLO(back_model_path, task='detect')
+
+    def front_has_targets(self, frame, camera_name):
+        if frame is None: return False
+
+        results = self.front_model.predict(
+            source=frame,
+            imgsz='320',
+            classes=TARGET_ACTIVATION,
+            conf=FRONT_DETECT_CONF,
+            verbose=False,
+            device=DEVICE_TYPE
+        )
+
+        correct_targets = []
+        for result in results:
+            if len(result.boxes) == 0:
+                continue
+
+            for box in result.boxes:
+                conf = float(box.conf)
+                cls_id = int(box.cls)
+                label = TARGET_NAMES.get(cls_id, "Unknown")
+                detect_message = f"{label} ({conf:.2f})"
+                print_message(f"[{camera_name}] Front Detected: {detect_message}")
+                correct_targets.append(detect_message)
+
+        return len(correct_targets) > 0
+
+    def back_has_targets(self, frame, camera_name):
+        results = self.back_model.predict(
+        source=frame,
+        device=DEVICE_TYPE,
+        classes=list(TARGET_NAMES.keys()),
+        conf=BACK_DETECT_CONF,
+        imgsz=IMAGE_SIZE,
+        verbose=False
+    )
+
+        target_detections = []
+
+        # 3. Process results silently
+        for result in results:
+            if len(result.boxes) == 0:
+                continue
+
+            for box in result.boxes:
+                conf = float(box.conf)
+                cls_id = int(box.cls)
+                label = TARGET_NAMES.get(cls_id, "Unknown")
+                detect_message = f"{label} ({conf:.2f})"
+                print_message(f"[{camera_name}] Back Detected: {detect_message}")
+
+                if cls_id not in TARGET_ACTIVATION:
+                    continue
+                frame_with_box = draw_detect_objectcv(cv2, box, frame, label, conf)
+                save_picture(cv2, frame_with_box, camera_name)
+                target_detections.append(detect_message)
+
+        return target_detections if target_detections else None
 
 
-class MotionDetector:
-    def __init__(self, camera_name, stream_url):
+
+class CameraWorker:
+    def __init__(self, camera_name, stream_url, gatekeeper):
         self.camera_name = camera_name
-        self.stream_url = stream_url
-        self.motion_stream_url = stream_url
+        self.stream_url = stream_url[:-1] + "1"
+        self.gatekeeper = gatekeeper
+        self.last_check_time = 0
+        self.is_streaming = False
+        self.stream_start_time = 0
+        self.last_reconnect_time = 0
 
-        print_message(f"[{self.camera_name}] Primary stream: {self.stream_url}")
-        print_message(f"[{self.camera_name}] Motion check stream: {self.motion_stream_url}")
 
-        self.avg = None
-        self.motion_counter = 0
-        self.last_motion_time = 0
-        self.was_moving = False
-
-    def get_frame(self):
-        cap = cv2.VideoCapture(self.motion_stream_url)
+    def get_fresh_frame(self):
+        cap = cv2.VideoCapture(self.stream_url)
         if not cap.isOpened():
             return None
         for _ in range(5):
@@ -33,104 +103,56 @@ class MotionDetector:
         cap.release()
         return frame if ret else None
 
-    def process_frame(self, frame):
-        if frame is None:
-            return False
 
-        # Resize only if forced or if frame is larger than 640
-        process_frame = frame
-        if MOTION_DETECTION.get("FORCE_RESIZE", False) or frame.shape[1] > 640:
-            width = MOTION_DETECTION.get("DOWNSCALE_WIDTH", 320)
-            height = int(frame.shape[0] * (width / frame.shape[1]))
-            process_frame = cv2.resize(frame, (width, height))
+    def run_cycle(self):
+        current_time = time.time()
 
-        gray = cv2.cvtColor(process_frame, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (21, 21), 0)
-
-        if self.avg is None:
-            self.avg = gray.copy().astype("float")
-            return False
-
-        # Parameters for window recording
-        learning_rate = MOTION_DETECTION.get("LEARNING_RATE", 0.05)
-        sensitivity = MOTION_DETECTION.get("SENSITIVITY", 20)
-
-        # Compute difference from moving average
-        cv2.accumulateWeighted(gray, self.avg, learning_rate)
-        frameDelta = cv2.absdiff(gray, cv2.convertScaleAbs(self.avg))
-        thresh = cv2.threshold(frameDelta, sensitivity, 255, cv2.THRESH_BINARY)[1]
-        thresh = cv2.dilate(thresh, None, iterations=2)
-        cnts, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        motion_detected = False
-        for c in cnts:
-            if cv2.contourArea(c) < MOTION_DETECTION.get("THRESHOLD", 600):
-                print_message(f"[{self.camera_name}] Nothing Found!!")
-                continue
-            motion_detected = True
-            break
-
-        return motion_detected
-
-    def check_motion(self):
-        frame = self.get_frame()
-        motion_detected = self.process_frame(frame)
-
-        if motion_detected:
-            self.motion_counter +=1
-
-        elif not motion_detected and self.motion_counter != 0:
-            self.motion_counter = 0
-
-
-        if not self.was_moving and self.motion_counter > MOTION_DETECTION.get("MIN_MOTION_FRAMES", 4):
-            print_message(f"[{self.camera_name}] Threshold reached. Triggering AI detection...")
-            self.stream_process()
-
-        elif self.was_moving and (time.time() - self.last_motion_time) < 60:
+        if self.is_streaming and current_time - self.stream_start_time < MOTION_DETECTION.get('COOLDOWN_PERIOD', 60):
             return
 
-        elif self.was_moving and (time.time() - self.last_motion_time > MOTION_DETECTION.get("COOLDOWN_PERIOD", 15)):
-            self.stream_process()
+        if current_time - self.last_check_time < CHECK_INTERVAL:
+            return
+
+        frame = self.get_fresh_frame()
+        if frame is None: return
+
+        # Perform the "Front-End" AI Check
+        is_targets = self.gatekeeper.front_has_targets(frame, self.camera_name)
+        self.last_check_time = current_time
 
 
-
-    def stream_process(self):
-        self.last_motion_time = time.time()
-        target_found = is_target_present(self.stream_url)
-
-        if not target_found:
-            print_message(f"[{self.camera_name}] No Human/Animal Detected!!")
-
-            if self.was_moving:
-                stop_ffmpeg_stream(self.camera_name)
-                self.was_moving = False
-
-        elif target_found and not self.was_moving:
+        if is_targets and not self.is_streaming:
+            target_found = self.gatekeeper.back_has_targets(frame, self.camera_name)
+            if not target_found:
+                return
             start_ffmpeg_stream(self.camera_name, target_found)
-            print_message(f"[{self.camera_name}] AI Detected {target_found}!!")
-            self.was_moving = True
+            self.is_streaming = True
+            self.stream_start_time = time.time()
 
+        elif self.is_streaming and not is_targets:
+            self.is_streaming = False
+            self.stream_start_time = 0
+            stop_ffmpeg_stream(self.camera_name)
 
 
 def main():
-    detectors = []
-    for cam_name, config in CAMERA_CONFIG.items():
-        detectors.append(MotionDetector(cam_name, config["STREAM_URL"]))
+    # 1. Initialize the SHARED model once
+    gatekeeper = YOLO26Gatekeeper(FRONT_MODEL_PATH, BACK_MODEL_PATH)
+    # 2. Setup your cameras (Load from your CAMERA_CONFIG)
+    # Example: cameras = [CameraWorker("FrontDoor", "rtsp://...", gatekeeper), ...]
+    cameras = []
+    for name, cfg in CAMERA_CONFIG.items():
+         cameras.append(CameraWorker(name, cfg["STREAM_URL"], gatekeeper))
 
-    print_message(f"Starting window-optimized motion detection for {len(detectors)} cameras...")
-    with ThreadPoolExecutor() as executor:
+    print(f"Monitoring {len(cameras)} cameras every {CHECK_INTERVAL}s...")
+
+    # 3. Main Loop
+    with ThreadPoolExecutor(max_workers=len(cameras)) as executor:
         while True:
-            # Submit tasks to executor for each detector (camera)
-            futures = [executor.submit(detector.check_motion) for detector in detectors]
-
-            # Wait for all threads to complete
-            for future in futures:
-                future.result()  # Blocks until the result is available
-
-            # Sleep between iterations
-            time.sleep(MOTION_DETECTION.get("CHECK_INTERVAL", 0.8))
-
+            futures = [executor.submit(cam.run_cycle) for cam in cameras]
+            for f in futures:
+                f.result()
+            time.sleep(0.1) # Prevents 100% CPU usage on the main thread
 
 if __name__ == "__main__":
     main()

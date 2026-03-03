@@ -1,47 +1,51 @@
 CAMERA_CONFIG = {
-    "Yard": {
-        "STREAM_URL": "PUT YOUR URL ON YOUR RTSP CAMERA",
-        "YOUTUBE_KEY": "1234-1234-1234-1234-1234",
-        "WEBHOOK_URL": "PUT YOUR URL",
-        "MESSAGE": "⚠️ Motion detected by camera in Stairs at ",
-    },
+    "Balcony": {
+        "STREAM_URL": "RTSP URL",
+        "YOUTUBE_KEY": "STREAMING KEY",
+        "WEBHOOK_URL": "DISCORD WEB HOOK URL",
+        "MESSAGE":"⚠️ Motion detected by camera on Balcony at"},
     "Stairs": {
-        "STREAM_URL": "PUT YOUR URL ON YOUR RTSP CAMERA",
-        "YOUTUBE_KEY": "1234-1234-1234-1234-1234",
-        "WEBHOOK_URL": "PUT YOUR URL",
-        "MESSAGE": "⚠️ Motion detected by camera in Stairs at ",
-    },
+        "STREAM_URL": "RTSP URL",
+        "YOUTUBE_KEY": "STREAMING KEY",
+        "WEBHOOK_URL": "DISCORD WEB HOOK URL",
+        "MESSAGE": "⚠️ Motion detected by camera on Stairs at"},
     "Kitchen": {
-        "STREAM_URL": "PUT YOUR URL ON YOUR RTSP CAMERA",
-        "YOUTUBE_KEY": "1234-1234-1234-1234-1234",
-        "WEBHOOK_URL": "PUT YOUR URL",
-        "MESSAGE": "⚠️ Motion detected by camera in Stairs at ",
-    },
+        "STREAM_URL": "RTSP URL",
+        "YOUTUBE_KEY": "STREAMING KEY",
+        "WEBHOOK_URL": "DISCORD WEB HOOK URL",
+        "MESSAGE": "⚠️ Motion detetion by camera on Kitchen at"},
 }
 
 YOUTUBE = {
     "SCOPES": ['https://www.googleapis.com/auth/youtube'],
-    "CLIENT_SECRETS_FILE": 'client_secret.json',
+    "CLIENT_SECRETS_FILE": 'PATH JSON',
     "API_SERVICE_NAME": 'youtube',
     "API_VERSION": 'v3',
-    "TOKEN_FILE": 'token.json',
-    "PLAYLIST_ID": 'ID PLAYLIST STR',
+    "TOKEN_FILE": 'PATH TOKEN JSON',
+    "PLAYLIST_ID": 'PLAYLIST ID',
     "VIDEO_URL": 'https://www.youtube.com/watch?v=',
-    "THUMBNAIL_PATH":''
+    "THUMBNAIL_PATH": 'PATH TO SAVE TMN',
 }
 
 REDIS = {
-    "PORT" : "PORT NUMBER INT",
-    "HOST" : "IP ADDRESS STR"
+    "PORT" : 6379,
+    "HOST" : "localhost"
 }
 
-LOG_DIR = "PATH TO LOGS/logs"
-FFMPEG_BIN = "/usr/bin/ffmpeg"
+LOG_DIR = "PATH"
+FFMPEG_BIN = "PATH"
+HLS_ROOT_RAM_DISK="PATH"
+INDEX_M3U8="index.m3u8"
+
 
 # API CONFIGURATION
-MODEL = "yolo26s_openvino_model"
-TARGET_ACTIVATION = [0, 14, 15, 16]
+MODEL = "yolo26x_int8_openvino_model"
 DETECT_CONF = 0.50
+FRONT_MODEL = "yolo26s_int8_openvino_model"
+BACK_MODEL = "yolo26x_int8_openvino_model"
+TARGET_ACTIVATION = [0, 14, 15, 16]
+BACK_DETECT_CONF = 0.50
+FRONT_DETECT_CONF = 0.30  # Higher for 320p to reduce false positives
 IMAGE_SIZE = 640
 DEVICE_TYPE = 'cpu'
 TARGET_NAMES = {
@@ -64,18 +68,18 @@ TARGET_NAMES = {
 }
 TASK = "detect"
 DETECT_ENDPOINT = "http://127.0.0.1:8001/detect?rtsp_url="
-HLS_ROOT_RAM_DISK="http://localhost:8002/streams"
-INDEX_M3U8="index.m3u8"
+
 
 # MOTION DETECTION CONFIGURATION
 # Optimized for 2-core CPU & Window recording
 MOTION_DETECTION = {
-    "THRESHOLD": 250,           # Catch smaller objects (like cats in distance)
-    "SENSITIVITY": 15,          # Pick up lower contrast through glass
+    "THRESHOLD": 200,           # Frame diff: 200 pixels (very sensitive for static cameras)
+    "SENSITIVITY": 15,          # Pixel intensity delta (0-255) (was 20)
     "DOWNSCALE_WIDTH": 320,
     "FORCE_RESIZE": False,
-    "CHECK_INTERVAL": 0.8,
-    "MIN_MOTION_FRAMES": 3,     # Trigger slightly faster
-    "COOLDOWN_PERIOD": 60,
-    "LEARNING_RATE": 0.05,
+    "CHECK_INTERVAL": 0.8,      # Slightly faster polling for windows
+    "MIN_MOTION_FRAMES": 4,     # Need 4 consecutive motion frames
+    "COOLDOWN_PERIOD": 60,      # Wait longer before stopping stream
+    "LEARNING_RATE": 0.05,      # How fast the background model adapts (0.01 - 0.1)
+    "KNN_WARMUP_FRAMES": 30,   # Frames to skip while KNN learns background
 }

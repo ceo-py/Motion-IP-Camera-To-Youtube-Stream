@@ -121,7 +121,20 @@ sudo systemctl start ip-camera-api.service motion-detection.service
 
 ## 📅 Version History
 
-### **v1.8.0 Latest** – Switched to YOLO26X & Removed Motion Daemon
+### **v1.9.0 Latest** – Dual YOLO26 Models with OpenVINO INT8 Optimization
+
+* **Features**:
+  * **Dual Model Architecture**: Uses **YOLO26n** (nano) as lightweight front-end for motion triggering, **YOLO26x** (large) as back-end for accurate verification.
+  * **OpenVINO INT8 Optimization**: Both models exported with OpenVINO INT8 quantization for 2-4x faster CPU inference - critical for old 2-core CPUs.
+  * **320p Front-End**: YOLO26n runs at 320p for ultra-fast inference (~10-15ms), triggers back-end when targets (person/bird/cat/dog) detected.
+  * **640p Back-End**: YOLO26x runs at 640p for accurate detection and verification.
+  * **Target Classes**: Filters for person (0), bird (14), cat (15), dog (16) only.
+  * **3-Second Check Interval**: Polls cameras every 3 seconds for efficient CPU usage.
+  * **60-Second Cooldown**: Stream continues for 60 seconds after last detection.
+
+---
+
+### **v1.8.0** – Switched to YOLO26X & Removed Motion Daemon
 * **Features**:
   * **Upgraded to YOLO26X**: Replaced `yolo11n` with the larger, more accurate `yolo26x.onnx` model for superior detection.
   * Completely removed dependency on the `motion` daemon in favor of a custom Python soft-trigger.
