@@ -3,7 +3,7 @@ import time
 import os
 from ultralytics import YOLO
 from concurrent.futures import ThreadPoolExecutor
-from config import CAMERA_CONFIG, MOTION_DETECTION, FRONT_MODEL, BACK_MODEL, FRONT_DETECT_CONF, BACK_DETECT_CONF, IMAGE_SIZE, TARGET_ACTIVATION, DEVICE_TYPE, TARGET_NAMES
+from config import CAMERA_CONFIG, MOTION_DETECTION, FRONT_MODEL, BACK_MODEL, FRONT_DETECT_CONF, BACK_DETECT_CONF, IMAGE_SIZE, TARGET_ACTIVATION, DEVICE_TYPE, TARGET_NAMES, HLS_ROOT_RAM_DISK, INDEX_M3U8
 from utils import print_message, save_picture, draw_detect_objectcv
 from start_stream import start_ffmpeg_stream
 from stop_stream import stop_ffmpeg_stream
@@ -83,8 +83,11 @@ class YOLO26Gatekeeper:
 
 
 class CameraWorker:
-    def __init__(self, camera_name, stream_url, gatekeeper):
+    # When streaming: use HLS to detect stop (matches delayed content)
+    # When NOT streaming: use RTSP to detect start (real-time)
+    def __init__(self, camera_name, stream_url, hls_url, gatekeeper):
         self.camera_name = camera_name
+        self.hls_url = hls_url
         self.stream_url = stream_url[:-1] + "1"
         self.gatekeeper = gatekeeper
         self.last_check_time = 0
@@ -94,7 +97,10 @@ class CameraWorker:
 
 
     def get_fresh_frame(self):
-        cap = cv2.VideoCapture(self.stream_url)
+        # When streaming: use HLS buffer (delayed, matches what's being streamed)
+        # When NOT streaming: use RTSP (real-time)
+        url = self.hls_url if self.is_streaming else self.stream_url
+        cap = cv2.VideoCapture(url)
         if not cap.isOpened():
             return None
         for _ in range(5):
@@ -142,7 +148,8 @@ def main():
     # Example: cameras = [CameraWorker("FrontDoor", "rtsp://...", gatekeeper), ...]
     cameras = []
     for name, cfg in CAMERA_CONFIG.items():
-         cameras.append(CameraWorker(name, cfg["STREAM_URL"], gatekeeper))
+        hls_url = f"{HLS_ROOT_RAM_DISK}/{name}/{INDEX_M3U8}"
+        cameras.append(CameraWorker(name, cfg["STREAM_URL"], hls_url, gatekeeper))
 
     print(f"Monitoring {len(cameras)} cameras every {CHECK_INTERVAL}s...")
 
