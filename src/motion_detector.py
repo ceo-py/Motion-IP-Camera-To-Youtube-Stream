@@ -48,7 +48,7 @@ class YOLO26Gatekeeper:
 
         return len(correct_targets) > 0
 
-    def back_has_targets(self, frame, camera_name):
+    def back_has_targets(self, frame, camera_name, streaming):
         results = self.back_model.predict(
         source=frame,
         device=DEVICE_TYPE,
@@ -74,8 +74,9 @@ class YOLO26Gatekeeper:
 
                 if cls_id not in TARGET_ACTIVATION:
                     continue
-                frame_with_box = draw_detect_objectcv(cv2, box, frame, label, conf)
-                save_picture(cv2, frame_with_box, camera_name)
+                if not streaming:
+                    frame_with_box = draw_detect_objectcv(cv2, box, frame, label, conf)
+                    save_picture(cv2, frame_with_box, camera_name)
                 target_detections.append(detect_message)
 
         return target_detections if target_detections else None
@@ -83,12 +84,10 @@ class YOLO26Gatekeeper:
 
 
 class CameraWorker:
-    # When streaming: use HLS to detect stop (matches delayed content)
-    # When NOT streaming: use RTSP to detect start (real-time)
-    def __init__(self, camera_name, stream_url, hls_url, gatekeeper):
+    def __init__(self, camera_name, stream_url, hls_url,gatekeeper):
         self.camera_name = camera_name
-        self.hls_url = hls_url
         self.stream_url = stream_url[:-1] + "1"
+        self.hls_url = hls_url
         self.gatekeeper = gatekeeper
         self.last_check_time = 0
         self.is_streaming = False
@@ -97,8 +96,6 @@ class CameraWorker:
 
 
     def get_fresh_frame(self):
-        # When streaming: use HLS buffer (delayed, matches what's being streamed)
-        # When NOT streaming: use RTSP (real-time)
         url = self.hls_url if self.is_streaming else self.stream_url
         cap = cv2.VideoCapture(url)
         if not cap.isOpened():
@@ -108,6 +105,32 @@ class CameraWorker:
         ret, frame = cap.read()
         cap.release()
         return frame if ret else None
+
+
+    def streaming_handler(self, frame):
+        target_found = self.gatekeeper.back_has_targets(frame, self.camera_name, self.is_streaming)
+        if not target_found:
+            self.is_streaming = False
+            self.stream_start_time = 0
+            stop_ffmpeg_stream(self.camera_name)
+        elif target_found:
+            self.stream_start_time = time.time()
+
+
+    def not_streaming_handler(self, frame, current_time):
+        is_targets = self.gatekeeper.front_has_targets(frame, self.camera_name)
+        self.last_check_time = current_time
+        if not is_targets:
+            return
+
+        target_found = self.gatekeeper.back_has_targets(frame, self.camera_name, self.is_streaming)
+        if not target_found:
+            return
+        start_ffmpeg_stream(self.camera_name, ", ".join(str(target) for target in target_found))
+        self.is_streaming = True
+        self.stream_start_time = time.time()
+
+
 
 
     def run_cycle(self):
@@ -122,23 +145,32 @@ class CameraWorker:
         frame = self.get_fresh_frame()
         if frame is None: return
 
+        if self.is_streaming:
+            self.streaming_handler(frame)
+        elif not self.is_streaming:
+            self.not_streaming_handler(frame, current_time)
+
         # Perform the "Front-End" AI Check
-        is_targets = self.gatekeeper.front_has_targets(frame, self.camera_name)
-        self.last_check_time = current_time
+        #is_targets = self.gatekeeper.front_has_targets(frame, self.camera_name)
+        #self.last_check_time = current_time
 
 
-        if is_targets and not self.is_streaming:
-            target_found = self.gatekeeper.back_has_targets(frame, self.camera_name)
-            if not target_found:
-                return
-            start_ffmpeg_stream(self.camera_name, target_found)
-            self.is_streaming = True
-            self.stream_start_time = time.time()
+        #if is_targets and not self.is_streaming:
+        #    target_found = self.gatekeeper.back_has_targets(frame, self.camera_name)
+        #    if not target_found:
+        #        return
+        #    start_ffmpeg_stream(self.camera_name, ", ".join(str(target) for target in target_found))
+        #    self.is_streaming = True
+        #    self.stream_start_time = time.time()
 
-        elif self.is_streaming and not is_targets:
-            self.is_streaming = False
-            self.stream_start_time = 0
-            stop_ffmpeg_stream(self.camera_name)
+        #elif self.is_streaming:
+        #    target_found = self.gatekeeper.back_has_targets(frame, self.camera_name)
+        #    if not target_found:
+        #        self.is_streaming = False
+        #        self.stream_start_time = 0
+        #        stop_ffmpeg_stream(self.camera_name)
+        #    elif target_found:
+        #        self.stream_start_time = time.time()
 
 
 def main():
@@ -148,8 +180,8 @@ def main():
     # Example: cameras = [CameraWorker("FrontDoor", "rtsp://...", gatekeeper), ...]
     cameras = []
     for name, cfg in CAMERA_CONFIG.items():
-        hls_url = f"{HLS_ROOT_RAM_DISK}/{name}/{INDEX_M3U8}"
-        cameras.append(CameraWorker(name, cfg["STREAM_URL"], hls_url, gatekeeper))
+         hls_url = f"{HLS_ROOT_RAM_DISK}/{name}/{INDEX_M3U8}"
+         cameras.append(CameraWorker(name, cfg["STREAM_URL"], hls_url,gatekeeper))
 
     print(f"Monitoring {len(cameras)} cameras every {CHECK_INTERVAL}s...")
 

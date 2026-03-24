@@ -1,4 +1,5 @@
 from generate_token import get_authenticated_service
+from googleapiclient.http import MediaFileUpload
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from utils import print_message, find_file_by_name, delete_file
@@ -123,7 +124,7 @@ def get_existing_stream_id(youtube: build, stream_name: str) -> str | None:
             if current_stream_name == stream_name:
                 return id
     except:
-        pass
+        raise
 
     return None  # If the stream is not found
 
@@ -163,20 +164,31 @@ def bind_stream_to_broadcast(youtube: build, broadcast_id: str, stream_id: str) 
     return response
 
 
+def delete_thumbnail(camera):
+    thumbnail_path = find_file_by_name(camera)
+
+    if thumbnail_path:
+        delete_file(thumbnail_path)
+
+
 def set_thumbnail(youtube, video_id, camera):
     thumbnail_path = find_file_by_name(camera)
 
     if not thumbnail_path:
         return
 
-    with open(thumbnail_path, 'rb') as f:
-        thumbnail_data = f.read()
-    
+    media = MediaFileUpload(
+        thumbnail_path,
+        mimetype='image/jpeg',  # or 'image/png'
+        resumable=False
+    )
+
     youtube.thumbnails().set(
         videoId=video_id,
-        media_body=thumbnail_data
+        media_body=media
     ).execute()
-    delete_file(thumbnail_path)
+
+    delete_thumbnail(camera)
 
 
 def get_processing_videos(youtube: build) -> None:
@@ -268,29 +280,33 @@ def gen_start_time() -> datetime:
 
 
 def start_youtube_broadcast_stream(camera: str) -> str:
-    youtube = get_authenticated_service()
-    start_time = gen_start_time()
-    title, description = gen_stream_name_desc(camera, start_time)
+    try:
+        youtube = get_authenticated_service()
+        start_time = gen_start_time()
+        title, description = gen_stream_name_desc(camera, start_time)
 
-    # Create scheduled broadcast
-    broadcast_response = create_scheduled_broadcast(
-        youtube, title, description, start_time)
-    broadcast_id = broadcast_response['id']
-    print_message(f"Scheduled Broadcast Created: {broadcast_id}")
+        # Create scheduled broadcast
+        broadcast_response = create_scheduled_broadcast(
+            youtube, title, description, start_time)
+        broadcast_id = broadcast_response['id']
+        print_message(f"Scheduled Broadcast Created: {broadcast_id}")
 
-    stream_id = get_existing_stream_id(youtube, camera)
-    if not stream_id:
-        print_message("Stream not found.")
-        exit()
+        stream_id = get_existing_stream_id(youtube, camera)
+        if not stream_id:
+            print_message("Stream not found.")
+            exit()
 
-    bind_response = bind_stream_to_broadcast(youtube, broadcast_id, stream_id)
-    print_message(f"Stream linked to broadcast: {bind_response['id']}")
+        bind_response = bind_stream_to_broadcast(youtube, broadcast_id, stream_id)
+        print_message(f"Stream linked to broadcast: {bind_response['id']}")
 
-    go_live(youtube, broadcast_id, camera)
-    print_message(f"Broadcast {broadcast_id} is now live!")
-    video_link = f"{VIDEO_URL}{broadcast_id}"
-    return video_link
-
+        go_live(youtube, broadcast_id, camera)
+        print_message(f"Broadcast {broadcast_id} is now live!")
+        video_link = f"{VIDEO_URL}{broadcast_id}"
+        return video_link
+    except Exception as e:
+        print_message(f"Start_youtube_broadcast_stream \n{e}")
+        delete_thumbnail(camera)
+        go_end_stream(camera)
 
 
 # if __name__ == '__main__':
